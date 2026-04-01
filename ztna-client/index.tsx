@@ -1,4 +1,4 @@
-//자동으로 만들어진 app/(tabs)/index.tsx 파일을 수정
+//자동으로 만들어진 app/(tabs)/index.tsx 경로의 파일을 수정
 
 import axios from 'axios'; // 통신 택배 기사
 import * as Device from 'expo-device';
