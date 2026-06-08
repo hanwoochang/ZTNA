@@ -94,7 +94,7 @@ router.post('/login', loginLimiter, async (req, res) => {
                 if (timeDiffHours > 0) {
                     const speed = distance / timeDiffHours;
                     console.log(`[이동 속도] ${speed.toFixed(0)}km/h`);
-                    if (speed > 1000) { riskScore += 50; reasons.push(`물리적으로 불가능한 이동 감지 (${speed.toFixed(0)}km/h)`); }
+                    if (speed > 1000) { riskScore += 70; reasons.push(`물리적으로 불가능한 이동 감지 (${speed.toFixed(0)}km/h)`); }
                     else if (speed > 500) { riskScore += 30; reasons.push(`비정상적으로 빠른 이동 감지 (${speed.toFixed(0)}km/h)`); }
                     else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동 감지 (${distance.toFixed(0)}km)`); }
                     else if (distance > 100) { riskScore += 10; reasons.push(`평소와 다른 위치 접속 (${distance.toFixed(0)}km 이동)`); }
@@ -105,13 +105,10 @@ router.post('/login', loginLimiter, async (req, res) => {
             }
         }
 
-        if (!latitude || !longitude) { riskScore += 15; reasons.push('위치 정보 수집 불가'); }
-        if (isWifi === false) { riskScore += 20; reasons.push('모바일 데이터 접속'); }
-        if (previousBatteryLevel !== null && batteryLevel !== null) {
-            const batteryDrop = previousBatteryLevel - batteryLevel;
-            if (batteryDrop >= 0.2) { riskScore += 20; reasons.push(`배터리 급감 감지 (${(batteryDrop * 100).toFixed(0)}% 감소)`); }
-        }
-        if (loginHour >= 2 && loginHour <= 5) { riskScore += 20; reasons.push(`비정상 시간대 접속 (${loginHour}시)`); }
+        if (!latitude || !longitude) { riskScore += 10; reasons.push('위치 정보 수집 불가'); }
+        if (isWifi === false) { riskScore += 5; reasons.push('모바일 데이터 접속'); }
+        
+        if (loginHour >= 2 && loginHour <= 5) { riskScore += 15; reasons.push(`비정상 시간대 접속 (${loginHour}시)`); }
 
         const [loginHistory] = await pool.query(
             `SELECT login_hour FROM access_logs WHERE user_id = ? AND action_taken = 'ALLOWED' AND login_hour IS NOT NULL ORDER BY created_at DESC LIMIT 10`,
