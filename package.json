@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -c \"blue,green,yellow,magenta\" -n \"POLICY,GATEWAY,TARGET,CLIENT\" \"cd ztna-policy-server && node server.js\" \"cd ztna-gateway && node server.js\" \"cd ztna-gateway && node target.js\" \"cd ztna-client && npx expo start\""
+    "dev": "concurrently -c \"blue,green,yellow,magenta\" -n \"POLICY,GATEWAY,TARGET,CLIENT\" \"cd ztna-policy-server && node server.js\" \"cd ztna-gateway && node server.js\" \"cd ztna-gateway && node target.js\" \"cd ztna-client && npx expo start -c\""
   },
   "keywords": [],
   "author": "",
@@ -11,5 +11,9 @@
   "description": "",
   "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "axios": "^1.20.0",
+    "mysql2": "^3.24.3"
   }
 }

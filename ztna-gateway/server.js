@@ -80,6 +80,15 @@ app.use('/private', verifyToken, createProxyMiddleware({
     target: process.env.TARGET_URL,
     changeOrigin: true,
     pathRewrite: { '^/private': '' },
+    on: {
+        proxyReq: (proxyReq, req, res) => {
+            // verifyToken 미들웨어에서 해석한 사용자 정보를 헤더에 주입하여 Target Server로 전달
+            if (req.user) {
+                proxyReq.setHeader('x-user-id', req.user.userId);
+                proxyReq.setHeader('x-user-email', req.user.email);
+            }
+        }
+    }
 }));
 
 app.listen(port, () => {
