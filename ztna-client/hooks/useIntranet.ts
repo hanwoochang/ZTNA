@@ -8,10 +8,24 @@ import { GATEWAY_URL } from '../constants/config';
 
 export const useIntranet = () => {
     const [isLoading, setIsLoading] = useState(false);
+    const [attendanceData, setAttendanceData] = useState<{ check_in_time: string | null, check_out_time: string | null }>({ check_in_time: null, check_out_time: null });
 
     const getAuthHeader = async () => {
         const token = await SecureStore.getItemAsync('jwt_token');
         return { Authorization: `Bearer ${token}` };
+    };
+
+    const fetchTodayAttendance = async () => {
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${GATEWAY_URL}/private/api/attendance/today`, { headers });
+            setAttendanceData({
+                check_in_time: response.data.check_in_time,
+                check_out_time: response.data.check_out_time
+            });
+        } catch (error) {
+            console.error('[근태 조회 실패]', error);
+        }
     };
 
     const handleAttendance = async (type: 'check-in' | 'check-out') => {
@@ -20,6 +34,8 @@ export const useIntranet = () => {
             const headers = await getAuthHeader();
             const response = await axios.post(`${GATEWAY_URL}/private/api/attendance/${type}`, {}, { headers });
             Alert.alert(type === 'check-in' ? '🏢 출근 완료' : '🏠 퇴근 완료', response.data.message || '정상 처리되었습니다.');
+            // 처리 후 화면 갱신
+            await fetchTodayAttendance();
         } catch (error: any) {
             Alert.alert('🚨 통신 실패', error.response?.data?.message || '사내망 접근에 실패했습니다.');
         } finally {
@@ -63,6 +79,8 @@ export const useIntranet = () => {
 
     return {
         isLoading,
+        attendanceData,
+        fetchTodayAttendance,
         handleAttendance,
         downloadSecretPdf
     };

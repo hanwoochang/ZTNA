@@ -3,7 +3,7 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const mysql = require('mysql2/promise'); // 🌟 DB 연결 추가
+const mysql = require('mysql2/promise'); // DB 연결 추가
 
 const app = express();
 const port = process.env.PORT || 4000;

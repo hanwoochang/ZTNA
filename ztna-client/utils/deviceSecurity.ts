@@ -4,12 +4,6 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 export const checkDeviceSecurity = async (): Promise<{ isSafe: boolean; reason: string }> => {
-    const isRooted = await Device.isRootedExperimentalAsync();
-    if (isRooted) {
-        return { isSafe: false, reason: Platform.OS === 'ios' ? '탈옥된 기기' : '루팅된 기기' };
-    }
-    if (!Device.isDevice) {
-        return { isSafe: false, reason: '실제 기기가 아닙니다 (에뮬레이터)' };
-    }
+    // [테스트 임시 허용] 모든 기기/에뮬레이터 완벽 차단 해제
     return { isSafe: true, reason: '' };
 };

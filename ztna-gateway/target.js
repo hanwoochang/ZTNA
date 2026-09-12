@@ -165,6 +165,35 @@ app.post('/api/attendance/check-out', async (req, res) => {
     }
 });
 
+// 당일 출퇴근 기록 조회 API
+app.get('/api/attendance/today', async (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ message: '사용자 식별 불가 (출입증 없음)' });
+
+    const today = new Date();
+    // KST 기준으로 보정하기 위한 로직 (옵션)
+    // today.setHours(today.getHours() + 9);
+    const dateRecord = today.toISOString().split('T')[0];
+
+    try {
+        const [rows] = await pool.query(
+            `SELECT check_in_time, check_out_time FROM attendance_logs 
+             WHERE user_id = ? AND date_record = ? LIMIT 1`,
+            [userId, dateRecord]
+        );
+        
+        if (rows.length > 0) {
+            res.json(rows[0]);
+        } else {
+            // 오늘 기록이 없는 경우
+            res.json({ check_in_time: null, check_out_time: null });
+        }
+    } catch (error) {
+        console.error('[출퇴근 기록 조회 에러]:', error);
+        res.status(500).json({ message: '서버 내부 에러가 발생했습니다.' });
+    }
+});
+
 // '127.0.0.1'에만 바인딩
 app.listen(port, '127.0.0.1', () => {
     console.log(`보호받는 타겟 서버가 localhost:${port} 에서 조용히 실행 중입니다.`);
