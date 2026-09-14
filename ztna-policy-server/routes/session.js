@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
 const pool = require('../db');
 
-// [API 4] 로그아웃
+// [API 5] 로그아웃
 router.post('/logout', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
     if (!token) return res.status(401).json({ message: '토큰이 없습니다.' });
@@ -20,7 +20,7 @@ router.post('/logout', async (req, res) => {
     }
 });
 
-// [API 5] Heartbeat
+// [API 6] Heartbeat
 router.post('/verify-context', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
     const { deviceId } = req.body;

@@ -42,7 +42,7 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                         handleLogout();
                     }
                 }
-            }, 5000);
+            }, 30000); // 30초마다 보안 컨텍스트 검증 (AWS 배포 환경 고려)
         }
 
         return () => { if (heartbeatInterval) clearInterval(heartbeatInterval); };

@@ -28,7 +28,7 @@ app.use(cors({
             callback(new Error('허가되지 않은 도메인입니다.'), false);
         }
     },
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type']
 }));
 

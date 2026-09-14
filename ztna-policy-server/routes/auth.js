@@ -238,17 +238,21 @@ router.post('/verify-bio', async (req, res) => {
             return res.status(401).json({ message: '⏰ 인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
         }
 
-        // 클라이언트 단말기(Secure Enclave)에서 이미 생체 인증을 통과했다는 신호이므로 코드를 검사하지 않고 토큰 발급
+        // [신뢰 기기 검증] 이 deviceId가 서버에 등록된 신뢰 기기인지 확인
+        // → 미등록 기기는 생체인증 우회 불가 (ZTNA 핵심 원칙 적용)
+        const [devices] = await pool.query(
+            'SELECT is_trusted FROM devices WHERE user_id = ? AND device_identifier = ?',
+            [user.id, deviceId]
+        );
+        if (!devices[0] || devices[0].is_trusted !== 1) {
+            return res.status(403).json({ message: '🚨 미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
+        }
+
+        // 클라이언트 Secure Enclave에서 생체 인증 통과 + 서버 신뢰 기기 검증 통과
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
         
-        const [existing] = await pool.query('SELECT id FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
-        if (existing.length === 0) {
-            await pool.query('INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, last_latitude, last_longitude) VALUES (?, ?, ?, 1, ?, ?)',
-                [user.id, deviceId, ipAddress, latitude || null, longitude || null]);
-        } else {
-            await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
-                [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
-        }
+        await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
+            [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
         
         const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
         res.json({ message: '🧬 생체 인증 성공!', token });

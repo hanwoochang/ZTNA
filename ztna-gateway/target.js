@@ -288,7 +288,7 @@ app.delete('/api/events/:id', async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
         
-        if (rows[0].author !== currentUser && rows[0].author !== '관리자') {
+        if (rows[0].author !== currentUser && currentUser !== '관리자') {
             return res.status(403).json({ message: '본인이 등록한 일정만 삭제할 수 있습니다.' });
         }
 
