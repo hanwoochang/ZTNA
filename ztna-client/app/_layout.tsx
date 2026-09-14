@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { AppThemeProvider, useTheme } from '@/hooks/useTheme';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
@@ -18,8 +19,10 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AppThemeProvider>
-      <RootLayoutNav />
-    </AppThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <RootLayoutNav />
+      </AppThemeProvider>
+    </GestureHandlerRootView>
   );
 }

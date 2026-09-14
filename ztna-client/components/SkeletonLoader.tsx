@@ -10,7 +10,6 @@ interface SkeletonLoaderProps {
 }
 
 export const SkeletonLoader = ({ width = '100%', height = 20, borderRadius = 4, style }: SkeletonLoaderProps) => {
-    const { isDark } = useAppStyles().colors === useAppStyles().colors ? useAppStyles() : { isDark: false }; // workaround to get isDark easily, or just use colors
     const { colors } = useAppStyles();
     
     const opacityAnim = useRef(new Animated.Value(0.3)).current;

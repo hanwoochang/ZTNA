@@ -1,6 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Animated, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useAppStyles } from '../styles/styles';
+
+const Icon = ({ name, size = 20, color, style }: { name: string, size?: number, color?: string, style?: any }) => {
+    let source;
+    switch(name) {
+        case 'shield': source = require('../assets/img/shield.svg'); break;
+        case 'key': source = require('../assets/img/key.svg'); break;
+        case 'mail': source = require('../assets/img/mail.svg'); break;
+        case 'refresh-cw': source = require('../assets/img/refresh-cw.svg'); break;
+        case 'arrow-left': source = require('../assets/img/arrow-left.svg'); break;
+        default: source = require('../assets/img/check.svg'); break;
+    }
+    return <Image source={source} style={[{ width: size, height: size, tintColor: color }, style]} />;
+};
 
 type Props = {
     otp: string;
@@ -32,36 +47,54 @@ export const OtpScreen = ({ otp, setOtp, handleVerifyOtp, handleResendOtp, onBac
     }, [fadeAnim, slideAnim]);
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                <Text style={styles.title}>🔐 2차 보안 인증</Text>
-                <View style={styles.otpBox}>
-                    <Text style={styles.otpAlert}>⚠️ 새로운 기기 접속 감지됨</Text>
-                    <Text style={styles.infoText}>이메일로 전송된 인증번호 6자리를 입력하세요.</Text>
-                    <Text style={styles.hintText}>(제한시간 3분)</Text>
-                </View>
-                <TextInput
-                    style={styles.input}
-                    value={otp}
-                    onChangeText={setOtp}
-                    placeholder="인증번호 6자리"
-                    placeholderTextColor={colors.subText}
-                    keyboardType="number-pad"
-                    maxLength={6} />
-                <TouchableOpacity style={styles.button} onPress={handleVerifyOtp}>
-                    <Text style={styles.buttonText}>인증하고 출입증 받기</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={{ marginTop: 10 }} onPress={handleResendOtp}>
-                    <Text style={styles.linkText}>인증번호가 오지 않나요? 재발송하기</Text>
-                </TouchableOpacity>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <Animated.View style={[styles.centerContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                            <Icon name="key" size={32} color={colors.text} style={{ marginRight: 12 }} />
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Verification</Text>
+                        </View>
+                        
+                        <View style={styles.otpBox}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <Icon name="shield" size={24} color={colors.danger} style={{ marginRight: 8 }} />
+                                <Text style={[styles.otpAlert, { marginBottom: 0 }]}>New Device Detected</Text>
+                            </View>
+                            <Text style={[styles.infoText, { color: colors.text }]}>Please enter the 6-digit code sent to your email.</Text>
+                            <Text style={styles.hintText}>(Expires in 3 minutes)</Text>
+                        </View>
+                        
+                        <TextInput
+                            style={styles.input}
+                            value={otp}
+                            onChangeText={setOtp}
+                            placeholder="6-digit code"
+                            placeholderTextColor={colors.subText}
+                            keyboardType="number-pad"
+                            maxLength={6} 
+                        />
+                        
+                        <TouchableOpacity style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center' }]} onPress={handleVerifyOtp}>
+                            <Icon name="key" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                            <Text style={styles.buttonText}>Verify & Proceed</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={handleResendOtp}>
+                            <Icon name="refresh-cw" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                            <Text style={[styles.linkText, { marginTop: 0 }]}>Resend Code</Text>
+                        </TouchableOpacity>
 
-                <TouchableOpacity style={{ marginTop: 20 }} onPress={() => {
-                    Keyboard.dismiss();
-                    onBack();}}>
-                    <Text style={styles.linkText}>로그인 화면으로 돌아가기</Text>
-                </TouchableOpacity>
-            </Animated.View>
-        </TouchableWithoutFeedback>
+                        <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={() => { Keyboard.dismiss(); onBack(); }}>
+                            <Icon name="arrow-left" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                            <Text style={[styles.linkText, { marginTop: 0 }]}>Back to Login</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 };

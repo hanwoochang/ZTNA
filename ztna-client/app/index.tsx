@@ -97,7 +97,14 @@ export default function HomeScreen() {
             setPassword={setPassword}
             ipAddress={ipAddress}
             deviceId={deviceId}
-            handleLogin={() => { Keyboard.dismiss(); handleLogin(email, password, deviceId, location, deviceContext); }}
+            handleLogin={() => { 
+                Keyboard.dismiss(); 
+                if (ipAddress === '수집 중...' || deviceId === '수집 중...') {
+                    Alert.alert('보안 컨텍스트 수집 중', '네트워크 및 기기 보안 정보를 수집하는 중입니다. 잠시만 기다려주세요.', [{ text: '확인' }]);
+                    return;
+                }
+                handleLogin(email, password, deviceId, location, deviceContext); 
+            }}
         />
     );
 }

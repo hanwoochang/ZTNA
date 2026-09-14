@@ -194,6 +194,104 @@ app.get('/api/attendance/today', async (req, res) => {
     }
 });
 
+// --- 게시판(Notice Board) DB 연동 API ---
+async function initNoticesDB() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notices (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                author VARCHAR(100) NOT NULL,
+                date VARCHAR(50) NOT NULL
+            )
+        `);
+        // Check if empty, then insert dummy data
+        const [rows] = await pool.query('SELECT COUNT(*) as count FROM notices');
+        if (rows[0].count === 0) {
+            await pool.query(`
+                INSERT INTO notices (title, content, author, date) VALUES 
+                ('[필독] ZTNA v2.0 보안 정책 업데이트 안내', '모든 직원은 새로운 보안 정책을 숙지해 주시기 바랍니다.', '보안팀', '2026-09-04'),
+                ('2분기 부서별 기밀문서 열람 권한 심사 결과', '권한 심사 결과가 메일로 개별 발송되었습니다.', '인사팀', '2026-09-02'),
+                ('비인가 IP 접근 시도 계정 차단 내역 보고', '어제 새벽 발생한 접근 시도는 모두 차단 완료되었습니다.', '보안관제', '2026-09-01')
+            `);
+        }
+    } catch (error) {
+        console.error('DB 초기화 에러:', error);
+    }
+}
+initNoticesDB();
+
+app.get('/api/notices', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM notices ORDER BY id DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.get('/api/notices/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.post('/api/notices', async (req, res) => {
+    const { title, content } = req.body;
+    const author = req.headers['x-user-email']?.split('@')[0] || '익명';
+    if (!title || !content) return res.status(400).json({ message: '제목과 내용을 입력해주세요.' });
+
+    const today = new Date().toISOString().split('T')[0];
+    try {
+        const [result] = await pool.query('INSERT INTO notices (title, content, author, date) VALUES (?, ?, ?, ?)', [title, content, author, today]);
+        res.json({ message: '✅ 기밀 게시글이 등록되었습니다.', notice: { id: result.insertId, title, content, author, date: today } });
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.delete('/api/notices/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        const [result] = await pool.query('DELETE FROM notices WHERE id = ?', [id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        res.json({ message: '🗑️ 게시글이 삭제되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.put('/api/notices/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { title, content } = req.body;
+    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    
+    try {
+        const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        const notice = rows[0];
+
+        if (notice.author !== currentUser && notice.author !== '보안팀' && notice.author !== '인사팀') {
+            return res.status(403).json({ message: '수정 권한이 없습니다 (작성자 본인만 가능).' });
+        }
+
+        const updatedTitle = title || notice.title;
+        const updatedContent = content || notice.content;
+        const updatedDate = new Date().toISOString().split('T')[0] + ' (수정됨)';
+
+        await pool.query('UPDATE notices SET title = ?, content = ?, date = ? WHERE id = ?', [updatedTitle, updatedContent, updatedDate, id]);
+        res.json({ message: '✏️ 게시글이 수정되었습니다.', notice: { ...notice, title: updatedTitle, content: updatedContent, date: updatedDate } });
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+// -------------------------------------------
+
 // '127.0.0.1'에만 바인딩
 app.listen(port, '127.0.0.1', () => {
     console.log(`보호받는 타겟 서버가 localhost:${port} 에서 조용히 실행 중입니다.`);

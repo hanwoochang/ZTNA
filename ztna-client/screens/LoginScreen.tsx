@@ -1,6 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Animated, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useAppStyles } from '../styles/styles';
+
+const Icon = ({ name, size = 20, color, style }: { name: string, size?: number, color?: string, style?: any }) => {
+    let source;
+    switch(name) {
+        case 'shield': source = require('../assets/img/shield.svg'); break;
+        case 'map-pin': source = require('../assets/img/map-pin.svg'); break;
+        case 'smartphone': source = require('../assets/img/smartphone.svg'); break;
+        case 'check-circle': source = require('../assets/img/check-circle.svg'); break;
+        case 'log-in': source = require('../assets/img/log-in.svg'); break;
+        default: source = require('../assets/img/check.svg'); break;
+    }
+    return <Image source={source} style={[{ width: size, height: size, tintColor: color }, style]} />;
+};
 
 type Props = {
     email: string;
@@ -25,20 +40,43 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
     }, [fadeAnim]);
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-                <Text style={styles.title}>🛡️ ZTNA 보안 에이전트</Text>
-                <View style={styles.dashboard}>
-                    <Text style={styles.infoText}>📍 현재 IP: <Text style={styles.highlight}>{ipAddress}</Text></Text>
-                    <Text style={styles.infoText}>📱 내 기기: <Text style={styles.highlight}>{deviceId}</Text></Text>
-                    <Text style={styles.statusText}>🟢 상태: 컨텍스트 수집 완료</Text>
-                </View>
-                <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="이메일" placeholderTextColor={colors.subText} autoCapitalize="none" />
-                <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="비밀번호" placeholderTextColor={colors.subText} secureTextEntry />
-                <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                    <Text style={styles.buttonText}>안전하게 로그인 및 기밀망 접속</Text>
-                </TouchableOpacity>
-            </Animated.View>
-        </TouchableWithoutFeedback>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <Animated.View style={[styles.centerContainer, { opacity: fadeAnim }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                            <Icon name="shield" size={32} color={colors.text} style={{ marginRight: 12 }} />
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Sign In</Text>
+                        </View>
+                        
+                        <View style={styles.cardFeatured}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                <Icon name="map-pin" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                                <Text style={styles.infoText}>IP: <Text style={styles.highlight}>{ipAddress}</Text></Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                <Icon name="smartphone" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                                <Text style={styles.infoText}>Device: <Text style={styles.highlight}>{deviceId}</Text></Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                                <Icon name="check-circle" size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                                <Text style={[styles.statusText, { marginTop: 0 }]}>Context Collected</Text>
+                            </View>
+                        </View>
+                        
+                        <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.subText} autoCapitalize="none" keyboardType="email-address" />
+                        <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.subText} secureTextEntry />
+                        
+                        <TouchableOpacity style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center' }]} onPress={handleLogin}>
+                            <Icon name="log-in" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                            <Text style={styles.buttonText}>Continue</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 };

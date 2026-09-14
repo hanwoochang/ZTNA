@@ -49,7 +49,7 @@ export const useIntranet = () => {
             const token = await SecureStore.getItemAsync('jwt_token');
             if (!token) throw new Error('인증 토큰이 없습니다.');
 
-            const fileUri = `${FileSystem.documentDirectory}secret_document.pdf`;
+            const fileUri = `${(FileSystem as any).documentDirectory}secret_document.pdf`;
             
             // expo-file-system을 사용하여 바이너리(PDF) 다운로드
             const downloadRes = await FileSystem.downloadAsync(
@@ -77,11 +77,76 @@ export const useIntranet = () => {
         }
     };
 
+    const [notices, setNotices] = useState<any[]>([]);
+
+    const fetchNotices = async () => {
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${GATEWAY_URL}/private/api/notices`, { headers });
+            setNotices(response.data);
+        } catch (error) {
+            console.error('[게시글 목록 조회 실패]', error);
+        }
+    };
+
+    const createNotice = async (title: string, content: string) => {
+        setIsLoading(true);
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.post(`${GATEWAY_URL}/private/api/notices`, { title, content }, { headers });
+            Alert.alert('✅ 등록 완료', response.data.message);
+            await fetchNotices();
+            return true;
+        } catch (error: any) {
+            Alert.alert('🚨 등록 실패', error.response?.data?.message || '게시글 등록에 실패했습니다.');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const deleteNotice = async (id: number) => {
+        setIsLoading(true);
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.delete(`${GATEWAY_URL}/private/api/notices/${id}`, { headers });
+            Alert.alert('✅ 삭제 완료', response.data.message);
+            await fetchNotices();
+            return true;
+        } catch (error: any) {
+            Alert.alert('🚨 삭제 실패', error.response?.data?.message || '게시글 삭제에 실패했습니다.');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const updateNotice = async (id: number, title: string, content: string) => {
+        setIsLoading(true);
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.put(`${GATEWAY_URL}/private/api/notices/${id}`, { title, content }, { headers });
+            Alert.alert('✅ 수정 완료', response.data.message);
+            await fetchNotices();
+            return true;
+        } catch (error: any) {
+            Alert.alert('🚨 수정 실패', error.response?.data?.message || '게시글 수정 권한이 없습니다.');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return {
         isLoading,
         attendanceData,
+        notices,
         fetchTodayAttendance,
         handleAttendance,
-        downloadSecretPdf
+        downloadSecretPdf,
+        fetchNotices,
+        createNotice,
+        deleteNotice,
+        updateNotice
     };
 };
