@@ -52,6 +52,13 @@ export const useAuth = () => {
                 const authMethod = await AsyncStorage.getItem('authMethod');
                 
                 if (authMethod === 'bio') {
+                    if (!loginResponse.data.isTrustedDevice) {
+                        Alert.alert('🛡️ 새로운 기기 감지', '아직 신뢰할 수 없는 기기입니다.\n최초 1회는 무조건 이메일 OTP로 인증해야 생체 인증 기기로 등록됩니다.');
+                        setOtp('');
+                        setShowOtpInput(true);
+                        return;
+                    }
+
                     const hasHardware = await LocalAuthentication.hasHardwareAsync();
                     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
                     

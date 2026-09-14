@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, Dimensions, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Calendar } from 'react-native-calendars';
 import { Image } from 'expo-image';
@@ -44,9 +45,29 @@ type Props = {
 };
 
 // 1. 근태 관리 탭
-const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handleAttendance, styles, colors }: any) => {
+const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handleAttendance, employees, fetchEmployees, styles, colors }: any) => {
+    const { width } = Dimensions.get('window');
+    const scrollViewRef = useRef<ScrollView>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [refreshing, setRefreshing] = useState(false);
+
     useEffect(() => {
-        fetchTodayAttendance();
+        fetchEmployees();
+        setTimeout(() => {
+            scrollViewRef.current?.scrollTo({ x: width, animated: false });
+        }, 0);
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchTodayAttendance();
+        }, [])
+    );
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchEmployees();
+        setRefreshing(false);
     }, []);
 
     const formatTime = (isoString: string | null) => {
@@ -55,36 +76,88 @@ const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handle
         return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     };
 
+    const handleScroll = (event: any) => {
+        const x = event.nativeEvent.contentOffset.x;
+        const page = Math.round(x / width);
+        if (currentPage !== page) setCurrentPage(page);
+    };
+
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
-                <Icon name="clock" size={28} color={colors.text} style={{ marginRight: 12 }} />
-                <Text style={[styles.title, { marginBottom: 0 }]}>Attendance</Text>
-            </View>
-            
-            <View style={[styles.cardFeatured, { alignItems: 'center', paddingVertical: 48 }]}>
-                <Text style={styles.heading3}>Today's Record</Text>
-                <Text style={styles.infoText}>In: {formatTime(attendanceData.check_in_time)}</Text>
-                <Text style={styles.infoText}>Out: {formatTime(attendanceData.check_out_time)}</Text>
+        <View style={{ flex: 1 }}>
+            {/* Pagination Dots */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'absolute', bottom: 24, left: 0, right: 0, zIndex: 10 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: currentPage === 0 ? colors.text : colors.borderSoft, marginHorizontal: 4 }} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: currentPage === 1 ? colors.text : colors.borderSoft, marginHorizontal: 4 }} />
             </View>
 
-            <TouchableOpacity style={[styles.button, { flexDirection: 'row', justifyContent: 'center' }]} onPress={() => handleAttendance('check-in')} disabled={isLoading}>
-                <Icon name="check-circle" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Check In (ID Card)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.buttonOutline, { flexDirection: 'row', justifyContent: 'center' }]} onPress={() => handleAttendance('check-out')} disabled={isLoading}>
-                <Icon name="clock" size={20} color={colors.text} style={{ marginRight: 8 }} />
-                <Text style={styles.buttonOutlineText}>Check Out</Text>
-            </TouchableOpacity>
-        </ScrollView>
+            <ScrollView 
+                ref={scrollViewRef} 
+                horizontal 
+                pagingEnabled 
+                showsHorizontalScrollIndicator={false} 
+                bounces={false}
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1 }}
+            >
+                {/* Page 0: Employee Directory (왼쪽 영역) */}
+                <View style={{ width, flex: 1 }}>
+                    <ScrollView 
+                        showsVerticalScrollIndicator={true} 
+                        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                            <Icon name="user" size={28} color={colors.text} style={{ marginRight: 12 }} />
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Directory</Text>
+                        </View>
+                        {employees?.map((emp: any) => (
+                            <View key={emp.id} style={[styles.card, { marginBottom: 12 }]}>
+                                <Text style={[styles.heading3, { marginBottom: 4 }]}>업데이트 예정</Text>
+                                <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서: 업데이트 예정</Text>
+                                <Text style={styles.infoText}>이메일: {emp.email}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Page 1: Attendance (기본 화면) */}
+                <View style={{ width, flex: 1 }}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, flexGrow: 1, justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                            <Icon name="clock" size={28} color={colors.text} style={{ marginRight: 12 }} />
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Attendance</Text>
+                        </View>
+                        
+                        <View style={[styles.cardFeatured, { alignItems: 'center', paddingVertical: 48 }]}>
+                            <Text style={styles.heading3}>Today's Record</Text>
+                            <Text style={styles.infoText}>In: {formatTime(attendanceData.check_in_time)}</Text>
+                            <Text style={styles.infoText}>Out: {formatTime(attendanceData.check_out_time)}</Text>
+                        </View>
+
+                        <TouchableOpacity style={[styles.button, { flexDirection: 'row', justifyContent: 'center' }]} onPress={() => handleAttendance('check-in')} disabled={isLoading}>
+                            <Icon name="check-circle" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                            <Text style={styles.buttonText}>Check In (ID Card)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.buttonOutline, { flexDirection: 'row', justifyContent: 'center' }]} onPress={() => handleAttendance('check-out')} disabled={isLoading}>
+                            <Icon name="clock" size={20} color={colors.text} style={{ marginRight: 8 }} />
+                            <Text style={styles.buttonOutlineText}>Check Out</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            </ScrollView>
+        </View>
     );
 };
 
 // 2. 기밀 문서 및 게시판 탭
 const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices, fetchNotices, createNotice, deleteNotice, updateNotice, styles, colors }: any) => {
-    useEffect(() => {
-        fetchNotices();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchNotices();
+        }, [])
+    );
 
     const [modalVisible, setModalVisible] = useState(false);
     const [detailVisible, setDetailVisible] = useState(false);
@@ -258,9 +331,11 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
 
 // 4. 일정 탭
 const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, styles, colors }: any) => {
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchEvents();
+        }, [])
+    );
 
     const todayStr = new Date().toISOString().split('T')[0];
     const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -280,7 +355,12 @@ const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, sty
     }, {});
     
     if (selectedDate) {
-        markedDates[selectedDate] = { ...markedDates[selectedDate], selected: true, selectedColor: colors.primary };
+        markedDates[selectedDate] = { 
+            ...markedDates[selectedDate], 
+            selected: true, 
+            selectedColor: '#141414', // 고정 검은색 배경
+            selectedTextColor: '#ffffff' // 고정 흰색 글자
+        };
     }
 
     const handleDayPress = (day: any) => {
@@ -313,13 +393,13 @@ const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, sty
                         backgroundColor: colors.cardBackground,
                         calendarBackground: colors.cardBackground,
                         textSectionTitleColor: colors.subText,
-                        selectedDayBackgroundColor: colors.primary,
-                        selectedDayTextColor: colors.onPrimary,
+                        selectedDayBackgroundColor: '#141414',
+                        selectedDayTextColor: '#ffffff',
                         todayTextColor: colors.accent,
                         dayTextColor: colors.text,
                         textDisabledColor: colors.border,
                         dotColor: colors.accent,
-                        selectedDotColor: colors.onPrimary,
+                        selectedDotColor: '#ffffff',
                         arrowColor: colors.text,
                         disabledArrowColor: colors.border,
                         monthTextColor: colors.text,
@@ -417,7 +497,7 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
                 </View>
             </View>
 
-            <View style={[styles.card, { marginTop: 24 }]}>
+            <View style={[styles.cardFeatured, { marginTop: 24 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                     <Icon name="lock" size={20} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={[styles.heading3, { marginBottom: 0 }]}>Authentication</Text>

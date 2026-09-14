@@ -67,45 +67,52 @@ app.get('/', (req, res) => {
 
 // 기밀 문서 다운로드 API (동적 PDF 생성)
 app.get('/api/documents/secret.pdf', (req, res) => {
-    const userEmail = req.headers['x-user-email'] || 'Unknown User';
-    
-    // IP 추적
-    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-    if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
-    if (ipAddress === '::1') ipAddress = '127.0.0.1';
+    try {
+        const userEmail = req.headers['x-user-email'] || 'Unknown User';
+        
+        // IP 추적
+        let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+        if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
+        if (ipAddress === '::1') ipAddress = '127.0.0.1';
 
-    // 현재 시간 계산
-    const timestamp = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        // 현재 시간 계산 (영어 포맷으로 변경하여 PDF 기본 폰트 충돌 방지)
+        const timestamp = new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
 
-    // PDF 문서 객체 생성
-    const doc = new PDFDocument();
+        // PDF 문서 객체 생성
+        const doc = new PDFDocument();
 
-    // 브라우저에서 다운로드될 파일명과 파일 타입 설정
-    res.setHeader('Content-disposition', 'attachment; filename="Top_Secret_Document.pdf"');
-    res.setHeader('Content-type', 'application/pdf');
+        // 브라우저에서 다운로드될 파일명과 파일 타입 설정
+        res.setHeader('Content-disposition', 'attachment; filename="Top_Secret_Document.pdf"');
+        res.setHeader('Content-type', 'application/pdf');
 
-    // 생성되는 PDF 스트림을 즉시 응답(Response)으로 보냄
-    doc.pipe(res);
+        // 생성되는 PDF 스트림을 즉시 응답(Response)으로 보냄
+        doc.pipe(res);
 
-    // [문서 본문 작성]
-    doc.fontSize(25).fillColor('black').text('ZTNA Top Secret Document', { align: 'center' });
-    doc.moveDown(1);
-    
-    doc.fontSize(14).text('This document contains highly classified information. Unauthorized distribution is strictly prohibited.');
-    doc.moveDown(2);
-    
-    doc.fontSize(12).text('Project Code: ZTNA-V2-APOLLO');
-    doc.text('Clearance Level: Level 5');
-    
-    // [동적 워터마크 추가] 사용자를 식별할 수 있는 핵심 정보 주입
-    doc.moveDown(5);
-    doc.fontSize(20).fillColor('red').opacity(0.3)
-       .text(`DOWNLOADED BY: ${userEmail}`, { align: 'center', angle: -20 })
-       .text(`TIME: ${timestamp}`, { align: 'center', angle: -20 })
-       .text(`IP: ${ipAddress}`, { align: 'center', angle: -20 });
+        // [문서 본문 작성]
+        doc.fontSize(25).fillColor('black').text('ZTNA Top Secret Document', { align: 'center' });
+        doc.moveDown(1);
+        
+        doc.fontSize(14).text('This document contains highly classified information. Unauthorized distribution is strictly prohibited.');
+        doc.moveDown(2);
+        
+        doc.fontSize(12).text('Project Code: ZTNA-V2-APOLLO');
+        doc.text('Clearance Level: Level 5');
+        
+        // [동적 워터마크 추가] 사용자를 식별할 수 있는 핵심 정보 주입
+        doc.moveDown(5);
+        doc.fontSize(20).fillColor('red').opacity(0.3)
+           .text(`DOWNLOADED BY: ${userEmail}`, { align: 'center' })
+           .text(`TIME: ${timestamp}`, { align: 'center' })
+           .text(`IP: ${ipAddress}`, { align: 'center' });
 
-    // 문서 작성 완료 (이 코드가 호출되면 브라우저로 전송 마무리)
-    doc.end();
+        // 문서 작성 완료 (이 코드가 호출되면 브라우저로 전송 마무리)
+        doc.end();
+    } catch (error) {
+        console.error('[PDF 생성 에러]:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'PDF 생성 중 에러가 발생했습니다.' });
+        }
+    }
 });
 
 // 모바일 사원증 기반 출근(체크인) API
@@ -211,9 +218,7 @@ async function initNoticesDB() {
         try {
             await pool.query('ALTER TABLE notices ADD COLUMN is_edited TINYINT(1) DEFAULT 0');
         } catch (e) {
-            if (e.code !== 'ER_DUP_FIELDNAME') {
-                throw e;
-            }
+            if (e.code !== 'ER_DUP_FIELDNAME') throw e;
         }
         // Check if empty, then insert dummy data
         const [rows] = await pool.query('SELECT COUNT(*) as count FROM notices');
@@ -257,6 +262,16 @@ async function initEventsDB() {
     }
 }
 initEventsDB();
+
+app.get('/api/employees', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT id, email FROM users ORDER BY email ASC');
+        res.json(rows);
+    } catch (err) {
+        console.error('[임직원 목록 조회 에러]:', err);
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
 
 app.get('/api/events', async (req, res) => {
     try {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { GATEWAY_URL } from '../constants/config';
 
@@ -71,7 +71,7 @@ export const useIntranet = () => {
                 Alert.alert('완료', '문서가 기기에 저장되었습니다.');
             }
         } catch (error: any) {
-            Alert.alert('🚨 다운로드 실패', error.message || '문서 유출 방지 시스템에 의해 차단되었습니다.');
+            Alert.alert('🚨 다운로드 실패', `이유: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -173,20 +173,24 @@ export const useIntranet = () => {
         }
     };
 
-    return {
-        isLoading,
-        attendanceData,
-        notices,
-        events,
-        fetchTodayAttendance,
-        handleAttendance,
+    const [employees, setEmployees] = useState<any[]>([]);
+
+    const fetchEmployees = async () => {
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${GATEWAY_URL}/private/api/employees`, { headers });
+            setEmployees(response.data);
+        } catch (error) {
+            console.error('[임직원 목록 조회 실패]', error);
+        }
+    };
+
+    return { 
+        isLoading, 
+        attendanceData, handleAttendance, fetchTodayAttendance,
         downloadSecretPdf,
-        fetchNotices,
-        createNotice,
-        deleteNotice,
-        updateNotice,
-        fetchEvents,
-        createEvent,
-        deleteEvent
+        notices, fetchNotices, createNotice, deleteNotice, updateNotice,
+        events, fetchEvents, createEvent, deleteEvent,
+        employees, fetchEmployees
     };
 };

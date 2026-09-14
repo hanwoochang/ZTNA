@@ -146,7 +146,9 @@ router.post('/login', loginLimiter, async (req, res) => {
 
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
-            return res.status(202).json({ message: '⚠️ OTP 인증이 필요합니다.', requiresOtp: true, 위험도점수: riskScore });
+            
+            const isTrustedDevice = !!(currentDevice && currentDevice.is_trusted === 1);
+            return res.status(202).json({ message: '⚠️ OTP 인증이 필요합니다.', requiresOtp: true, isTrustedDevice, 위험도점수: riskScore });
 
         } else {
             if (currentDevice) {
