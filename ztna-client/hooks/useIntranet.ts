@@ -137,16 +137,56 @@ export const useIntranet = () => {
         }
     };
 
+    const [events, setEvents] = useState<any[]>([]);
+
+    const fetchEvents = async () => {
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${GATEWAY_URL}/private/api/events`, { headers });
+            setEvents(response.data);
+        } catch (error: any) {
+            console.error('fetchEvents Error:', error.response?.data || error.message);
+        }
+    };
+
+    const createEvent = async (title: string, date: string) => {
+        try {
+            const headers = await getAuthHeader();
+            await axios.post(`${GATEWAY_URL}/private/api/events`, { title, date }, { headers });
+            await fetchEvents();
+            return true;
+        } catch (error: any) {
+            Alert.alert('🚨 등록 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            return false;
+        }
+    };
+
+    const deleteEvent = async (id: number) => {
+        try {
+            const headers = await getAuthHeader();
+            await axios.delete(`${GATEWAY_URL}/private/api/events/${id}`, { headers });
+            await fetchEvents();
+            return true;
+        } catch (error: any) {
+            Alert.alert('🚨 삭제 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            return false;
+        }
+    };
+
     return {
         isLoading,
         attendanceData,
         notices,
+        events,
         fetchTodayAttendance,
         handleAttendance,
         downloadSecretPdf,
         fetchNotices,
         createNotice,
         deleteNotice,
-        updateNotice
+        updateNotice,
+        fetchEvents,
+        createEvent,
+        deleteEvent
     };
 };

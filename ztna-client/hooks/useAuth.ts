@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Alert } from 'react-native';
 import { POLICY_SERVER_URL, GATEWAY_URL } from '../constants/config';
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
@@ -47,7 +49,43 @@ export const useAuth = () => {
             });
 
             if (loginResponse.data.requiresOtp) {
-                Alert.alert('📧 메일 발송 완료', '등록된 이메일로 6자리 인증번호가 발송되었습니다.');
+                const authMethod = await AsyncStorage.getItem('authMethod');
+                
+                if (authMethod === 'bio') {
+                    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+                    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+                    
+                    if (hasHardware && isEnrolled) {
+                        const bioResult = await LocalAuthentication.authenticateAsync({
+                            promptMessage: 'ZTNA 생체 인증 (2차 보안)',
+                            cancelLabel: '취소',
+                            fallbackLabel: '비밀번호 사용',
+                        });
+
+                        if (bioResult.success) {
+                            try {
+                                const bioVerifyResponse = await axios.post(`${POLICY_SERVER_URL}/api/verify-bio`, {
+                                    email,
+                                    deviceId,
+                                    latitude: location?.latitude || null,
+                                    longitude: location?.longitude || null,
+                                });
+                                await SecureStore.setItemAsync('jwt_token', bioVerifyResponse.data.token);
+                                testGatewayAccess(bioVerifyResponse.data.token);
+                                return; // 성공시 종료
+                            } catch (bioError: any) {
+                                Alert.alert('❌ 생체 인증 서버 검증 실패', bioError.response?.data?.message || '알 수 없는 오류');
+                            }
+                        } else {
+                            Alert.alert('⚠️ 생체 인증 취소', 'OTP 인증으로 대체합니다.');
+                        }
+                    } else {
+                        Alert.alert('⚠️ 생체 인증 불가', '기기에 등록된 생체 정보가 없습니다. OTP 인증으로 대체합니다.');
+                    }
+                }
+
+                // bio가 아니거나, bio를 취소/실패했을 경우 OTP 창 띄움
+                Alert.alert('📧 2차 인증', '등록된 이메일로 발송된 6자리 인증번호를 입력하거나, OTP 인증을 진행해주세요.');
                 setOtp('');
                 setShowOtpInput(true);
                 return;

@@ -203,9 +203,18 @@ async function initNoticesDB() {
                 title VARCHAR(255) NOT NULL,
                 content TEXT NOT NULL,
                 author VARCHAR(100) NOT NULL,
-                date VARCHAR(50) NOT NULL
+                date VARCHAR(50) NOT NULL,
+                is_edited TINYINT(1) DEFAULT 0
             )
         `);
+        // 기존 테이블에 is_edited 컬럼이 없을 경우 추가 (스키마 마이그레이션)
+        try {
+            await pool.query('ALTER TABLE notices ADD COLUMN is_edited TINYINT(1) DEFAULT 0');
+        } catch (e) {
+            if (e.code !== 'ER_DUP_FIELDNAME') {
+                throw e;
+            }
+        }
         // Check if empty, then insert dummy data
         const [rows] = await pool.query('SELECT COUNT(*) as count FROM notices');
         if (rows[0].count === 0) {
@@ -221,6 +230,74 @@ async function initNoticesDB() {
     }
 }
 initNoticesDB();
+
+// --- 캘린더 일정(Events) DB 연동 API ---
+async function initEventsDB() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS events (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                date VARCHAR(50) NOT NULL,
+                author VARCHAR(100) NOT NULL
+            )
+        `);
+        // Check if empty
+        const [rows] = await pool.query('SELECT COUNT(*) as count FROM events');
+        if (rows[0].count === 0) {
+            await pool.query(`
+                INSERT INTO events (title, date, author) VALUES 
+                ('임원진 세미나', '2026-09-14', '관리자'),
+                ('보안 점검회의', '2026-09-15', '관리자'),
+                ('서버 정기 유지보수', '2026-09-20', '관리자')
+            `);
+        }
+    } catch (error) {
+        console.error('Events DB 초기화 에러:', error);
+    }
+}
+initEventsDB();
+
+app.get('/api/events', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM events ORDER BY date ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.post('/api/events', async (req, res) => {
+    const { title, date } = req.body;
+    const author = req.headers['x-user-email']?.split('@')[0] || '익명';
+    if (!title || !date) return res.status(400).json({ message: '제목과 날짜를 입력해주세요.' });
+
+    try {
+        const [result] = await pool.query('INSERT INTO events (title, date, author) VALUES (?, ?, ?)', [title, date, author]);
+        res.json({ message: '일정이 등록되었습니다.', event: { id: result.insertId, title, date, author } });
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.delete('/api/events/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    
+    try {
+        const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
+        
+        if (rows[0].author !== currentUser && rows[0].author !== '관리자') {
+            return res.status(403).json({ message: '본인이 등록한 일정만 삭제할 수 있습니다.' });
+        }
+
+        const [result] = await pool.query('DELETE FROM events WHERE id = ?', [id]);
+        res.json({ message: '일정이 삭제되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
 
 app.get('/api/notices', async (req, res) => {
     try {
@@ -257,9 +334,18 @@ app.post('/api/notices', async (req, res) => {
 
 app.delete('/api/notices/:id', async (req, res) => {
     const id = parseInt(req.params.id);
+    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+
     try {
-        const [result] = await pool.query('DELETE FROM notices WHERE id = ?', [id]);
-        if (result.affectedRows === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+        const notice = rows[0];
+
+        if (notice.author !== currentUser && currentUser !== '보안팀' && currentUser !== '인사팀') {
+            return res.status(403).json({ message: '본인이 작성한 게시글만 삭제할 수 있습니다.' });
+        }
+
+        await pool.query('DELETE FROM notices WHERE id = ?', [id]);
         res.json({ message: '🗑️ 게시글이 삭제되었습니다.' });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
@@ -276,16 +362,16 @@ app.put('/api/notices/:id', async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
-        if (notice.author !== currentUser && notice.author !== '보안팀' && notice.author !== '인사팀') {
+        if (notice.author !== currentUser && currentUser !== '보안팀' && currentUser !== '인사팀') {
             return res.status(403).json({ message: '수정 권한이 없습니다 (작성자 본인만 가능).' });
         }
 
         const updatedTitle = title || notice.title;
         const updatedContent = content || notice.content;
-        const updatedDate = new Date().toISOString().split('T')[0] + ' (수정됨)';
+        const updatedDate = new Date().toISOString().split('T')[0]; // 순수 날짜만 유지
 
-        await pool.query('UPDATE notices SET title = ?, content = ?, date = ? WHERE id = ?', [updatedTitle, updatedContent, updatedDate, id]);
-        res.json({ message: '✏️ 게시글이 수정되었습니다.', notice: { ...notice, title: updatedTitle, content: updatedContent, date: updatedDate } });
+        await pool.query('UPDATE notices SET title = ?, content = ?, date = ?, is_edited = 1 WHERE id = ?', [updatedTitle, updatedContent, updatedDate, id]);
+        res.json({ message: '✏️ 게시글이 수정되었습니다.', notice: { ...notice, title: updatedTitle, content: updatedContent, date: updatedDate, is_edited: 1 } });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
     }

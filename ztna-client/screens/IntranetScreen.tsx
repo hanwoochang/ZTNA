@@ -111,7 +111,7 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
         if (!selectedNotice) return;
         const success = await updateNotice(selectedNotice.id, editTitle, editContent);
         if (success) {
-            setSelectedNotice({ ...selectedNotice, title: editTitle, content: editContent, date: new Date().toISOString().split('T')[0] + ' (수정됨)' });
+            setSelectedNotice({ ...selectedNotice, title: editTitle, content: editContent, date: new Date().toISOString().split('T')[0], is_edited: 1 });
             setIsEditing(false);
         }
     };
@@ -158,25 +158,37 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
                 </TouchableOpacity>
             </View>
 
-            {notices.map((notice: any) => (
-                <View key={notice.id} style={{ marginBottom: 12 }}>
-                    <Swipeable renderRightActions={() => renderRightActions(notice.id)}>
-                        <TouchableOpacity style={[styles.card, { flexDirection: 'row', alignItems: 'center', marginBottom: 0 }]} onPress={() => { 
-                            setSelectedNotice(notice); 
-                            setEditTitle(notice.title);
-                            setEditContent(notice.content);
-                            setIsEditing(false);
-                            setDetailVisible(true); 
-                        }}>
-                            <Icon name="file-text" size={24} color={colors.subText} style={{ marginRight: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.noticeTitle}>{notice.title}</Text>
-                                <Text style={styles.noticeMeta}>{notice.author} • {notice.date}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    </Swipeable>
-                </View>
-            ))}
+            {notices.map((notice: any) => {
+                const isAuthor = notice.author === currentUserHandle || currentUserHandle === '보안팀' || currentUserHandle === '인사팀';
+                const CardContent = (
+                    <TouchableOpacity style={[styles.card, { flexDirection: 'row', alignItems: 'center', marginBottom: 0 }]} onPress={() => { 
+                        setSelectedNotice(notice); 
+                        setEditTitle(notice.title);
+                        setEditContent(notice.content);
+                        setIsEditing(false);
+                        setDetailVisible(true); 
+                    }}>
+                        <Icon name="file-text" size={24} color={colors.subText} style={{ marginRight: 16 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.infoText, { fontWeight: '700', marginBottom: 4 }]} numberOfLines={1}>{notice.title}</Text>
+                            <Text style={[styles.infoText, { color: colors.subText, fontSize: 13, marginBottom: 0 }]} numberOfLines={1}>
+                                {notice.author} • {notice.date}{notice.is_edited ? ' (수정됨)' : ''}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+                );
+                return (
+                    <View key={notice.id} style={{ marginBottom: 12 }}>
+                        {isAuthor ? (
+                            <Swipeable renderRightActions={() => renderRightActions(notice.id)}>
+                                {CardContent}
+                            </Swipeable>
+                        ) : (
+                            CardContent
+                        )}
+                    </View>
+                );
+            })}
 
             {/* 새 글 작성 모달 */}
             <Modal visible={modalVisible} transparent animationType="fade">
@@ -207,13 +219,13 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.heading2}>{selectedNotice?.title}</Text>
                                     </View>
-                                    {(selectedNotice?.author === currentUserHandle || selectedNotice?.author === '보안팀' || selectedNotice?.author === '인사팀') && (
+                                    {(selectedNotice?.author === currentUserHandle || currentUserHandle === '보안팀' || currentUserHandle === '인사팀') && (
                                         <TouchableOpacity onPress={() => setIsEditing(true)} style={{ padding: 4, marginLeft: 8 }}>
                                             <Icon name="edit-2" size={20} color={colors.accent} />
                                         </TouchableOpacity>
                                     )}
                                 </View>
-                                <Text style={[styles.noticeMeta, { marginBottom: 24 }]}>{selectedNotice?.author} • {selectedNotice?.date}</Text>
+                                <Text style={[styles.noticeMeta, { marginBottom: 24 }]}>{selectedNotice?.author} • {selectedNotice?.date}{selectedNotice?.is_edited ? ' (수정됨)' : ''}</Text>
                                 <Text style={styles.infoText}>{selectedNotice?.content}</Text>
                                 <View style={{ marginTop: 32 }}>
                                     <TouchableOpacity style={[styles.buttonOutline, { flexDirection: 'row', justifyContent: 'center' }]} onPress={() => setDetailVisible(false)}>
@@ -245,18 +257,23 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
 };
 
 // 4. 일정 탭
-const ScheduleTab = ({ styles, colors }: any) => {
+const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, styles, colors }: any) => {
+    useEffect(() => {
+        fetchEvents();
+    }, []);
+
     const todayStr = new Date().toISOString().split('T')[0];
-    const [events, setEvents] = useState<any>({
-        '2026-09-14': [{ id: '1', title: '임원진 세미나' }],
-        '2026-09-15': [{ id: '2', title: '보안 점검회의' }],
-        '2026-09-20': [{ id: '3', title: '서버 정기 유지보수' }]
-    });
     const [selectedDate, setSelectedDate] = useState<string>(todayStr);
     const [newEventTitle, setNewEventTitle] = useState('');
 
-    const markedDates = Object.keys(events).reduce((acc: any, date) => {
-        if (events[date] && events[date].length > 0) {
+    const groupedEvents = (events || []).reduce((acc: any, ev: any) => {
+        if (!acc[ev.date]) acc[ev.date] = [];
+        acc[ev.date].push(ev);
+        return acc;
+    }, {});
+
+    const markedDates = Object.keys(groupedEvents).reduce((acc: any, date) => {
+        if (groupedEvents[date].length > 0) {
             acc[date] = { marked: true, dotColor: colors.accent };
         }
         return acc;
@@ -270,21 +287,10 @@ const ScheduleTab = ({ styles, colors }: any) => {
         setSelectedDate(day.dateString);
     };
 
-    const addEvent = () => {
+    const handleAddEvent = async () => {
         if (!newEventTitle.trim()) return;
-        const newEvent = { id: Date.now().toString(), title: newEventTitle };
-        setEvents((prev: any) => ({
-            ...prev,
-            [selectedDate]: [...(prev[selectedDate] || []), newEvent]
-        }));
-        setNewEventTitle('');
-    };
-
-    const deleteEvent = (id: string) => {
-        setEvents((prev: any) => ({
-            ...prev,
-            [selectedDate]: prev[selectedDate].filter((e: any) => e.id !== id)
-        }));
+        const success = await createEvent(newEventTitle, selectedDate);
+        if (success) setNewEventTitle('');
     };
 
     return (
@@ -329,18 +335,23 @@ const ScheduleTab = ({ styles, colors }: any) => {
                     <Text style={[styles.heading3, { marginBottom: 16 }]}>{selectedDate} 일정</Text>
                     
                     <View style={{ marginBottom: 16 }}>
-                        {events[selectedDate]?.length > 0 ? (
-                            events[selectedDate].map((ev: any) => (
-                                <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSoft }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginRight: 12 }} />
-                                        <Text style={styles.infoText}>{ev.title}</Text>
+                        {groupedEvents[selectedDate]?.length > 0 ? (
+                            groupedEvents[selectedDate].map((ev: any) => {
+                                const isAuthor = ev.author === (email?.split('@')[0] || '익명') || ev.author === '관리자';
+                                return (
+                                    <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSoft }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginRight: 12 }} />
+                                            <Text style={styles.infoText}>{ev.title}</Text>
+                                        </View>
+                                        {isAuthor && (
+                                            <TouchableOpacity onPress={() => deleteEvent(ev.id)} style={{ padding: 8 }}>
+                                                <Icon name="trash-2" size={18} color={colors.danger} />
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
-                                    <TouchableOpacity onPress={() => deleteEvent(ev.id)} style={{ padding: 8 }}>
-                                        <Icon name="trash-2" size={18} color={colors.danger} />
-                                    </TouchableOpacity>
-                                </View>
-                            ))
+                                );
+                            })
                         ) : (
                             <Text style={[styles.infoText, { textAlign: 'center', color: colors.subText, marginVertical: 16 }]}>등록된 일정이 없습니다.</Text>
                         )}
@@ -354,7 +365,7 @@ const ScheduleTab = ({ styles, colors }: any) => {
                             value={newEventTitle} 
                             onChangeText={setNewEventTitle} 
                         />
-                        <TouchableOpacity style={[styles.button, { width: 48, height: 48, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', marginBottom: 0 }]} onPress={addEvent}>
+                        <TouchableOpacity style={[styles.button, { width: 48, height: 48, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', marginBottom: 0 }]} onPress={handleAddEvent}>
                             <Icon name="plus" size={24} color={colors.onPrimary} />
                         </TouchableOpacity>
                     </View>
@@ -364,9 +375,25 @@ const ScheduleTab = ({ styles, colors }: any) => {
     );
 };
 
-// 3. 설정 탭
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// 5. 설정 탭
 const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors }: any) => {
     const { themeMode, setThemeMode } = useTheme();
+    const [authMethod, setAuthMethod] = useState<'otp' | 'bio'>('otp');
+
+    useEffect(() => {
+        const loadAuth = async () => {
+            const saved = await AsyncStorage.getItem('authMethod');
+            if (saved === 'bio') setAuthMethod('bio');
+        };
+        loadAuth();
+    }, []);
+
+    const changeAuth = async (method: 'otp' | 'bio') => {
+        setAuthMethod(method);
+        await AsyncStorage.setItem('authMethod', method);
+    };
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }}>
@@ -390,27 +417,56 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
                 </View>
             </View>
 
-            <View style={styles.cardFeatured}>
+            <View style={[styles.card, { marginTop: 24 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <Icon name="lock" size={20} color={colors.text} style={{ marginRight: 8 }} />
+                    <Text style={[styles.heading3, { marginBottom: 0 }]}>Authentication</Text>
+                </View>
+                <TouchableOpacity onPress={() => changeAuth('otp')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: authMethod === 'otp' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        {authMethod === 'otp' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                    </View>
+                    <Text style={[styles.infoText, authMethod === 'otp' && styles.highlight, { marginBottom: 0 }]}>
+                        Email OTP
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => changeAuth('bio')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: authMethod === 'bio' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        {authMethod === 'bio' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                    </View>
+                    <Text style={[styles.infoText, authMethod === 'bio' && styles.highlight, { marginBottom: 0 }]}>
+                        FaceID/Fingerprint
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={[styles.cardFeatured, { marginTop: 24 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                     <Icon name="monitor" size={20} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={[styles.heading3, { marginBottom: 0 }]}>Appearance</Text>
                 </View>
                 <TouchableOpacity onPress={() => setThemeMode('auto')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="monitor" size={18} color={themeMode === 'auto' ? colors.text : colors.subText} style={{ marginRight: 12 }} />
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: themeMode === 'auto' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        {themeMode === 'auto' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                    </View>
                     <Text style={[styles.infoText, themeMode === 'auto' && styles.highlight, { marginBottom: 0 }]}>
-                        System {themeMode === 'auto' ? '✓' : ''}
+                        System
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setThemeMode('light')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="sun" size={18} color={themeMode === 'light' ? colors.text : colors.subText} style={{ marginRight: 12 }} />
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: themeMode === 'light' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        {themeMode === 'light' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                    </View>
                     <Text style={[styles.infoText, themeMode === 'light' && styles.highlight, { marginBottom: 0 }]}>
-                        Light {themeMode === 'light' ? '✓' : ''}
+                        Light
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setThemeMode('dark')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="moon" size={18} color={themeMode === 'dark' ? colors.text : colors.subText} style={{ marginRight: 12 }} />
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: themeMode === 'dark' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        {themeMode === 'dark' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                    </View>
                     <Text style={[styles.infoText, themeMode === 'dark' && styles.highlight, { marginBottom: 0 }]}>
-                        Dark {themeMode === 'dark' ? '✓' : ''}
+                        Dark
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -424,12 +480,16 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
 };
 
 import { NavigationContainer, NavigationIndependentTree } from '@react-navigation/native';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 
 export const IntranetScreen = (props: Props) => {
     const { styles, colors } = useAppStyles();
     const intranet = useIntranet();
     const { isDark } = useTheme();
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // 사내망(기밀) 진입 시 화면 캡처 원천 차단 (iOS/Android 지원)
+    usePreventScreenCapture();
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -486,7 +546,7 @@ export const IntranetScreen = (props: Props) => {
                                 {() => <DocumentsTab {...props} {...intranet} styles={styles} colors={colors} />}
                             </Tab.Screen>
                             <Tab.Screen name="Schedule">
-                                {() => <ScheduleTab styles={styles} colors={colors} />}
+                                {() => <ScheduleTab {...props} {...intranet} styles={styles} colors={colors} />}
                             </Tab.Screen>
                             <Tab.Screen name="Settings">
                                 {() => <SettingsTab {...props} styles={styles} colors={colors} />}

@@ -218,4 +218,44 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
     }
 });
 
+// [API 4] 생체 인증(FaceID/지문) 검증 (클라이언트 로컬 인증 성공 후 호출)
+router.post('/verify-bio', async (req, res) => {
+    const { email, deviceId, latitude, longitude } = req.body;
+
+    if (!email || !deviceId) return res.status(400).json({ message: '이메일, 기기 정보는 필수입니다.' });
+
+    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+    if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
+    if (ipAddress === '::1') ipAddress = '127.0.0.1';
+
+    try {
+        const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+        const user = users[0];
+        if (!user) return res.status(401).json({ message: '❌ 사용자를 찾을 수 없습니다.' });
+        if (!user.otp_expiry) return res.status(401).json({ message: '❌ 유효한 2차 인증 요청이 없습니다.' });
+        if (new Date() > new Date(user.otp_expiry)) {
+            await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
+            return res.status(401).json({ message: '⏰ 인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
+        }
+
+        // 클라이언트 단말기(Secure Enclave)에서 이미 생체 인증을 통과했다는 신호이므로 코드를 검사하지 않고 토큰 발급
+        await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
+        
+        const [existing] = await pool.query('SELECT id FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
+        if (existing.length === 0) {
+            await pool.query('INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, last_latitude, last_longitude) VALUES (?, ?, ?, 1, ?, ?)',
+                [user.id, deviceId, ipAddress, latitude || null, longitude || null]);
+        } else {
+            await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
+                [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
+        }
+        
+        const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
+        res.json({ message: '🧬 생체 인증 성공!', token });
+    } catch (error) {
+        console.error('[생체 인증 에러 상세]:', error);
+        res.status(500).json({ message: '서버 에러', error: error.message });
+    }
+});
+
 module.exports = router;
