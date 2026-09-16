@@ -130,7 +130,7 @@ export const useAuth = () => {
     const handleResendOtp = async (email: string, password: string, deviceId: string, location: any, deviceContext: any) => {
         setIsLoading(true);
         try {
-            await axios.post(`${POLICY_SERVER_URL}/api/login`, {
+            const res = await axios.post(`${POLICY_SERVER_URL}/api/login`, {
                 email, password, deviceId,
                 isRooted: false,
                 latitude: location?.latitude || null,
@@ -139,7 +139,17 @@ export const useAuth = () => {
                 batteryLevel: deviceContext?.batteryLevel ?? 1,
                 previousBatteryLevel: deviceContext?.previousBatteryLevel ?? null
             });
-            Alert.alert('인증번호 재발송', '새로운 인증번호가 이메일로 발송되었습니다.');
+
+            if (res.data.requiresOtp) {
+                // 서버가 OTP를 정상 발송한 경우에만 성공 알림
+                Alert.alert('인증번호 재발송', '새로운 인증번호가 이메일로 발송되었습니다.');
+                setOtp('');
+                setOtpError('');
+            } else {
+                // 재시도 사이에 위험도가 낮아져 OTP가 불필요해진 경우
+                Alert.alert('안내', '보안 상태가 변경되었습니다. 다시 로그인해주세요.');
+                setShowOtpInput(false);
+            }
         } catch (error: any) {
             Alert.alert('재발송 실패', error.response?.data?.message || '서버 통신 실패');
         } finally {

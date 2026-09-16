@@ -55,20 +55,14 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
                 </View>
             </View>
 
-            {!!loginError && (
-                <Text style={{ color: colors.danger, marginBottom: 8, fontSize: 13, alignSelf: 'flex-start' }}>
-                    {loginError}
-                </Text>
-            )}
-
             <TextInput
-                style={[styles.input, !!loginError && { borderColor: colors.danger, borderWidth: 1 }]}
+                style={styles.input}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email Address"
                 placeholderTextColor={colors.subText}
-                keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!isLoading}
             />
             <TextInput
                 style={styles.input}
@@ -77,15 +71,24 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
                 placeholder="Password"
                 placeholderTextColor={colors.subText}
                 secureTextEntry
+                editable={!isLoading}
             />
 
+            {/* 에러 메시지 인라인 표시 (웹에서 Alert 대신 사용) */}
+            {!!loginError && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, alignSelf: 'stretch' }}>
+                    <Icon name="alert-circle" size={14} color={colors.danger} style={{ marginRight: 6 }} />
+                    <Text style={{ color: colors.danger, fontSize: 13, flex: 1 }}>{loginError}</Text>
+                </View>
+            )}
+
             <TouchableOpacity
-                style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]}
+                style={[styles.button, { marginTop: 8, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]}
                 onPress={handleLogin}
                 disabled={isLoading}
             >
-                <Icon name="arrow-right" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>{isLoading ? 'Connecting...' : 'Continue'}</Text>
+                <Icon name={isLoading ? 'loader' : 'arrow-right'} size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>{isLoading ? 'Signing in...' : 'Continue'}</Text>
             </TouchableOpacity>
         </Animated.View>
     );
@@ -96,7 +99,7 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                {/* 웹: 키보드 dismiss 불필요 / 모바일: TouchableWithoutFeedback으로 빈 곳 터치 시 키보드 내림 */}
+                {/* 웹: 키보드 dismiss 불필요 / 모바일: 빈 곳 터치 시 키보드 내림 */}
                 {Platform.OS === 'web' ? (
                     formContent
                 ) : (

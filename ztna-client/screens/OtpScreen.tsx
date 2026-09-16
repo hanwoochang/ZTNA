@@ -57,28 +57,31 @@ export const OtpScreen = ({ otp, setOtp, otpError, isLoading, handleVerifyOtp, h
                 <Text style={styles.hintText}>(Expires in 3 minutes)</Text>
             </View>
             
-            {!!otpError && (
-                <Text style={{ color: colors.danger, marginBottom: 8, fontSize: 13, alignSelf: 'flex-start' }}>
-                    {otpError}
-                </Text>
-            )}
-
             <TextInput
-                style={[styles.input, !!otpError && { borderColor: colors.danger, borderWidth: 1 }]}
+                style={styles.input}
                 value={otp}
                 onChangeText={setOtp}
                 placeholder="6-digit code"
                 placeholderTextColor={colors.subText}
                 keyboardType="number-pad"
-                maxLength={6} 
+                maxLength={6}
+                editable={!isLoading}
             />
             
+            {/* 에러 메시지 인라인 표시 (웹에서 Alert 대신 사용) */}
+            {!!otpError && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, alignSelf: 'stretch' }}>
+                    <Icon name="alert-circle" size={14} color={colors.danger} style={{ marginRight: 6 }} />
+                    <Text style={{ color: colors.danger, fontSize: 13, flex: 1 }}>{otpError}</Text>
+                </View>
+            )}
+            
             <TouchableOpacity 
-                style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]} 
+                style={[styles.button, { marginTop: 8, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]} 
                 onPress={handleVerifyOtp}
                 disabled={isLoading}
             >
-                <Icon name="key" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                <Icon name={isLoading ? 'loader' : 'key'} size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
                 <Text style={styles.buttonText}>{isLoading ? 'Verifying...' : 'Verify & Proceed'}</Text>
             </TouchableOpacity>
             
