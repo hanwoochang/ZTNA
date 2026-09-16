@@ -49,7 +49,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (ipAddress === '::1') ipAddress = '127.0.0.1';
 
     const now = new Date();
-    const loginHour = now.getHours(); // 🕒 테스트용: 강제로 새벽 3시로 조작
+    const loginHour = now.getHours(); // 테스트용: 강제로 새벽 3시로 조작
     //const loginHour = 3;
     let riskScore = 0;
     let reasons = [];
@@ -59,7 +59,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         const user = users[0];
 
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-            return res.status(401).json({ message: '🚫 이메일이나 비밀번호가 일치하지 않습니다.' });
+            return res.status(401).json({ message: '이메일이나 비밀번호가 일치하지 않습니다.' });
         }
 
         const [devices] = await pool.query('SELECT * FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
@@ -128,7 +128,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             action = 'DENIED';
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
-            return res.status(403).json({ message: '🚨 차단된 접근입니다.', 위험도점수: riskScore });
+            return res.status(403).json({ message: '차단된 접근입니다.', 위험도점수: riskScore });
 
         } else if (riskScore >= 30) {
             action = 'STEP_UP';

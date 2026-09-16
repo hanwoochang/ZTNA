@@ -50,7 +50,7 @@ async function runTests() {
         } else {
             token = loginRes.data.token;
         }
-        console.log('✅ ZTNA 출입증(JWT) 발급 완료!\n');
+        console.log('ZTNA 출입증(JWT) 발급 완료!\n');
     } catch (error) {
         console.error('로그인 에러:', error.response ? error.response.data : error.message);
         return;
@@ -78,7 +78,7 @@ async function runTests() {
         pdfRes.data.pipe(writer);
         
         await new Promise((resolve) => writer.on('finish', resolve));
-        console.log('✅ PDF 다운로드 완료 (파일명: downloaded_secret.pdf)\n');
+        console.log('PDF 다운로드 완료 (파일명: downloaded_secret.pdf)\n');
     } catch (error) {
         console.error('PDF 다운로드 에러:', error.response ? error.response.data : error.message);
     }

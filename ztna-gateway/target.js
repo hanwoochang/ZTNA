@@ -137,7 +137,7 @@ app.post('/api/attendance/check-in', async (req, res) => {
              ON DUPLICATE KEY UPDATE check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time)`,
             [userId, dateRecord, ipAddress]
         );
-        res.json({ message: '✅ 성공적으로 출근(Check-in) 처리되었습니다.' });
+        res.json({ message: '성공적으로 출근(Check-in) 처리되었습니다.' });
     } catch (error) {
         console.error('[출근 처리 에러]:', error);
         res.status(500).json({ message: '서버 내부 에러가 발생했습니다.' });
@@ -165,7 +165,7 @@ app.post('/api/attendance/check-out', async (req, res) => {
              ON DUPLICATE KEY UPDATE check_out_time = NOW(), ip_address = ?`,
             [userId, dateRecord, ipAddress, ipAddress]
         );
-        res.json({ message: '✅ 성공적으로 퇴근(Check-out) 처리되었습니다.' });
+        res.json({ message: '성공적으로 퇴근(Check-out) 처리되었습니다.' });
     } catch (error) {
         console.error('[퇴근 처리 에러]:', error);
         res.status(500).json({ message: '서버 내부 에러가 발생했습니다.' });
@@ -341,7 +341,7 @@ app.post('/api/notices', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     try {
         const [result] = await pool.query('INSERT INTO notices (title, content, author, date) VALUES (?, ?, ?, ?)', [title, content, author, today]);
-        res.json({ message: '✅ 기밀 게시글이 등록되었습니다.', notice: { id: result.insertId, title, content, author, date: today } });
+        res.json({ message: '기밀 게시글이 등록되었습니다.', notice: { id: result.insertId, title, content, author, date: today } });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
     }
@@ -361,7 +361,7 @@ app.delete('/api/notices/:id', async (req, res) => {
         }
 
         await pool.query('DELETE FROM notices WHERE id = ?', [id]);
-        res.json({ message: '🗑️ 게시글이 삭제되었습니다.' });
+        res.json({ message: '게시글이 삭제되었습니다.' });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
     }
@@ -386,7 +386,7 @@ app.put('/api/notices/:id', async (req, res) => {
         const updatedDate = new Date().toISOString().split('T')[0]; // 순수 날짜만 유지
 
         await pool.query('UPDATE notices SET title = ?, content = ?, date = ?, is_edited = 1 WHERE id = ?', [updatedTitle, updatedContent, updatedDate, id]);
-        res.json({ message: '✏️ 게시글이 수정되었습니다.', notice: { ...notice, title: updatedTitle, content: updatedContent, date: updatedDate, is_edited: 1 } });
+        res.json({ message: '게시글이 수정되었습니다.', notice: { ...notice, title: updatedTitle, content: updatedContent, date: updatedDate, is_edited: 1 } });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
     }

@@ -15,7 +15,7 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
             heartbeatInterval = setInterval(async () => {
                 const security = await checkDeviceSecurity();
                 if (!security.isSafe) {
-                    Alert.alert('🚨 보안 위협 감지', '루팅이 감지되어 연결을 종료합니다.');
+                    Alert.alert('보안 위협 감지', '루팅이 감지되어 연결을 종료합니다.');
                     handleLogout();
                     return;
                 }
@@ -33,12 +33,12 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                         await Storage.setItemAsync('jwt_token', response.data.token);
                     }
                     if (response.data.action === 'TERMINATE') {
-                        Alert.alert('🛡️ 보안 경고', response.data.message);
+                        Alert.alert('보안 경고', response.data.message);
                         handleLogout();
                     }
                 } catch (error: any) {
                     if (error.response?.data?.action === 'TERMINATE') {
-                        Alert.alert('🛡️ 보안 경고', error.response.data.message);
+                        Alert.alert('보안 경고', error.response.data.message);
                         handleLogout();
                     }
                 }
