@@ -27,7 +27,7 @@ export default function HomeScreen() {
     const [deviceContext, setDeviceContext] = useState<DeviceContext | null>(null);
 
     const {
-        isLoggedIn, secretData, showOtpInput, otp, setShowOtpInput, setOtp, 
+        isLoggedIn, secretData, showOtpInput, otp, setShowOtpInput, setOtp, otpError, loginError, isLoading,
         testGatewayAccess, handleLogin, handleResendOtp, handleVerifyOtp, handleLogout
     } = useAuth();
 
@@ -38,7 +38,7 @@ export default function HomeScreen() {
             const security = await checkDeviceSecurity();
             if (!security.isSafe) {
                 setIsDeviceSafe(false);
-                Alert.alert('🚨 보안 위협 감지', `${security.reason}입니다.\n보안 정책에 의해 앱 사용이 차단됩니다.`, [{ text: '확인' }]);
+                Alert.alert('보안 위협 감지', `${security.reason}입니다.\n보안 정책에 의해 앱 사용이 차단됩니다.`, [{ text: '확인' }]);
                 return;
             }
 
@@ -82,6 +82,8 @@ export default function HomeScreen() {
         <OtpScreen
             otp={otp}
             setOtp={setOtp}
+            otpError={otpError}
+            isLoading={isLoading}
             handleVerifyOtp={() => { Keyboard.dismiss(); handleVerifyOtp(email, deviceId, location); }}
             handleResendOtp={() => handleResendOtp(email, password, deviceId, location, deviceContext)}
             onBack={() => { 
@@ -97,6 +99,8 @@ export default function HomeScreen() {
             setPassword={setPassword}
             ipAddress={ipAddress}
             deviceId={deviceId}
+            loginError={loginError}
+            isLoading={isLoading}
             handleLogin={() => { 
                 Keyboard.dismiss(); 
                 if (ipAddress === '수집 중...' || deviceId === '수집 중...') {

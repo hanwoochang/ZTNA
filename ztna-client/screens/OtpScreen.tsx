@@ -13,12 +13,14 @@ const Icon = ({ name, size = 20, color, style }: { name: string, size?: number, 
 type Props = {
     otp: string;
     setOtp: (otp: string) => void;
+    otpError?: string;
+    isLoading?: boolean;
     handleVerifyOtp: () => void;
     handleResendOtp: () => void;
     onBack: () => void;
 };
 
-export const OtpScreen = ({ otp, setOtp, handleVerifyOtp, handleResendOtp, onBack }: Props) => {
+export const OtpScreen = ({ otp, setOtp, otpError, isLoading, handleVerifyOtp, handleResendOtp, onBack }: Props) => {
     const { styles, colors } = useAppStyles();
     const slideAnim = useRef(new Animated.Value(50)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -32,12 +34,72 @@ export const OtpScreen = ({ otp, setOtp, handleVerifyOtp, handleResendOtp, onBac
             }),
             Animated.spring(slideAnim, {
                 toValue: 0,
-                friction: 8,
+                friction: 6,
                 tension: 40,
                 useNativeDriver: true,
             })
         ]).start();
     }, [fadeAnim, slideAnim]);
+
+    const formContent = (
+        <Animated.View style={[styles.centerContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                <Icon name="key" size={32} color={colors.text} style={{ marginRight: 12 }} />
+                <Text style={[styles.title, { marginBottom: 0 }]}>Verification</Text>
+            </View>
+            
+            <View style={styles.otpBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Icon name="shield" size={24} color={colors.danger} style={{ marginRight: 8 }} />
+                    <Text style={[styles.otpAlert, { marginBottom: 0 }]}>New Device Detected</Text>
+                </View>
+                <Text style={[styles.infoText, { color: colors.text }]}>Please enter the 6-digit code sent to your email.</Text>
+                <Text style={styles.hintText}>(Expires in 3 minutes)</Text>
+            </View>
+            
+            {!!otpError && (
+                <Text style={{ color: colors.danger, marginBottom: 8, fontSize: 13, alignSelf: 'flex-start' }}>
+                    {otpError}
+                </Text>
+            )}
+
+            <TextInput
+                style={[styles.input, !!otpError && { borderColor: colors.danger, borderWidth: 1 }]}
+                value={otp}
+                onChangeText={setOtp}
+                placeholder="6-digit code"
+                placeholderTextColor={colors.subText}
+                keyboardType="number-pad"
+                maxLength={6} 
+            />
+            
+            <TouchableOpacity 
+                style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]} 
+                onPress={handleVerifyOtp}
+                disabled={isLoading}
+            >
+                <Icon name="key" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>{isLoading ? 'Verifying...' : 'Verify & Proceed'}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+                style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isLoading ? 0.5 : 1 }} 
+                onPress={handleResendOtp}
+                disabled={isLoading}
+            >
+                <Icon name="refresh-cw" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                <Text style={[styles.linkText, { marginTop: 0 }]}>Resend Code</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+                style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} 
+                onPress={() => { Keyboard.dismiss(); onBack(); }}
+            >
+                <Icon name="arrow-left" size={16} color={colors.subText} style={{ marginRight: 8 }} />
+                <Text style={[styles.linkText, { marginTop: 0 }]}>Back to Login</Text>
+            </TouchableOpacity>
+        </Animated.View>
+    );
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -46,88 +108,10 @@ export const OtpScreen = ({ otp, setOtp, handleVerifyOtp, handleResendOtp, onBac
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 {Platform.OS === 'web' ? (
-                    <Animated.View style={[styles.centerContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
-                            <Icon name="key" size={32} color={colors.text} style={{ marginRight: 12 }} />
-                            <Text style={[styles.title, { marginBottom: 0 }]}>Verification</Text>
-                        </View>
-                        
-                        <View style={styles.otpBox}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <Icon name="shield" size={24} color={colors.danger} style={{ marginRight: 8 }} />
-                                <Text style={[styles.otpAlert, { marginBottom: 0 }]}>New Device Detected</Text>
-                            </View>
-                            <Text style={[styles.infoText, { color: colors.text }]}>Please enter the 6-digit code sent to your email.</Text>
-                            <Text style={styles.hintText}>(Expires in 3 minutes)</Text>
-                        </View>
-                        
-                        <TextInput
-                            style={styles.input}
-                            value={otp}
-                            onChangeText={setOtp}
-                            placeholder="6-digit code"
-                            placeholderTextColor={colors.subText}
-                            keyboardType="number-pad"
-                            maxLength={6} 
-                        />
-                        
-                        <TouchableOpacity style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center' }]} onPress={handleVerifyOtp}>
-                            <Icon name="key" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                            <Text style={styles.buttonText}>Verify & Proceed</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={handleResendOtp}>
-                            <Icon name="refresh-cw" size={16} color={colors.subText} style={{ marginRight: 8 }} />
-                            <Text style={[styles.linkText, { marginTop: 0 }]}>Resend Code</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={() => { Keyboard.dismiss(); onBack(); }}>
-                            <Icon name="arrow-left" size={16} color={colors.subText} style={{ marginRight: 8 }} />
-                            <Text style={[styles.linkText, { marginTop: 0 }]}>Back to Login</Text>
-                        </TouchableOpacity>
-                    </Animated.View>
+                    formContent
                 ) : (
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                        <Animated.View style={[styles.centerContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
-                                <Icon name="key" size={32} color={colors.text} style={{ marginRight: 12 }} />
-                                <Text style={[styles.title, { marginBottom: 0 }]}>Verification</Text>
-                            </View>
-                            
-                            <View style={styles.otpBox}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                    <Icon name="shield" size={24} color={colors.danger} style={{ marginRight: 8 }} />
-                                    <Text style={[styles.otpAlert, { marginBottom: 0 }]}>New Device Detected</Text>
-                                </View>
-                                <Text style={[styles.infoText, { color: colors.text }]}>Please enter the 6-digit code sent to your email.</Text>
-                                <Text style={styles.hintText}>(Expires in 3 minutes)</Text>
-                            </View>
-                            
-                            <TextInput
-                                style={styles.input}
-                                value={otp}
-                                onChangeText={setOtp}
-                                placeholder="6-digit code"
-                                placeholderTextColor={colors.subText}
-                                keyboardType="number-pad"
-                                maxLength={6} 
-                            />
-                            
-                            <TouchableOpacity style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center' }]} onPress={handleVerifyOtp}>
-                                <Icon name="key" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                                <Text style={styles.buttonText}>Verify & Proceed</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={handleResendOtp}>
-                                <Icon name="refresh-cw" size={16} color={colors.subText} style={{ marginRight: 8 }} />
-                                <Text style={[styles.linkText, { marginTop: 0 }]}>Resend Code</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} onPress={() => { Keyboard.dismiss(); onBack(); }}>
-                                <Icon name="arrow-left" size={16} color={colors.subText} style={{ marginRight: 8 }} />
-                                <Text style={[styles.linkText, { marginTop: 0 }]}>Back to Login</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
+                        {formContent}
                     </TouchableWithoutFeedback>
                 )}
             </KeyboardAvoidingView>

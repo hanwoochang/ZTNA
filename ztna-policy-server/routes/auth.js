@@ -41,7 +41,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         return res.status(400).json({ message: '이메일, 비밀번호, 기기 정보는 필수입니다.' });
     }
     if (isRooted) {
-        return res.status(403).json({ message: '🚨 보안 정책 위반: 루팅/탈옥된 기기는 접근이 차단됩니다.' });
+        return res.status(403).json({ message: '보안 정책 위반: 루팅/탈옥된 기기는 접근이 차단됩니다.' });
     }
 
     let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
@@ -148,7 +148,7 @@ router.post('/login', loginLimiter, async (req, res) => {
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
             
             const isTrustedDevice = !!(currentDevice && currentDevice.is_trusted === 1);
-            return res.status(202).json({ message: '⚠️ OTP 인증이 필요합니다.', requiresOtp: true, isTrustedDevice, 위험도점수: riskScore });
+            return res.status(202).json({ message: 'OTP 인증이 필요합니다.', requiresOtp: true, isTrustedDevice, 위험도점수: riskScore });
 
         } else {
             if (currentDevice) {
@@ -162,7 +162,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             loginLimiter.resetKey(ipAddress);
 
             const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
-            return res.json({ message: '✅ ZTNA 출입증 발급 성공', token });
+            return res.json({ message: 'ZTNA 출입증 발급 성공', token });
         }
     } catch (error) {
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -183,20 +183,20 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
     try {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
-        if (!user) return res.status(401).json({ message: '❌ 사용자를 찾을 수 없습니다.' });
-        if (!user.otp_code || !user.otp_expiry) return res.status(401).json({ message: '❌ 유효한 OTP 요청이 없습니다. 다시 로그인해주세요.' });
+        if (!user) return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
+        if (!user.otp_code || !user.otp_expiry) return res.status(401).json({ message: '유효한 OTP 요청이 없습니다. 다시 로그인해주세요.' });
         if (new Date() > new Date(user.otp_expiry)) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-            return res.status(401).json({ message: '⏰ 인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
+            return res.status(401).json({ message: '인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
         }
         if (user.otp_attempts >= 5) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-            return res.status(429).json({ message: '🚨 인증 5회 실패. OTP가 무효화되었습니다. 다시 로그인해주세요.' });
+            return res.status(429).json({ message: '인증 5회 실패. OTP가 무효화되었습니다. 다시 로그인해주세요.' });
         }
         if (!(await bcrypt.compare(otp, user.otp_code))) {
             await pool.query('UPDATE users SET otp_attempts = otp_attempts + 1 WHERE id = ?', [user.id]);
             const remaining = 5 - user.otp_attempts - 1;
-            return res.status(401).json({ message: `❌ 인증번호가 틀렸습니다. (남은 시도: ${remaining}회)` });
+            return res.status(401).json({ message: `인증번호가 틀렸습니다. (남은 시도: ${remaining}회)` });
         }
 
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
@@ -213,7 +213,7 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         otpLimiter.resetKey(ipAddress);
         
         const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
-        res.json({ message: '✅ 2차 인증 성공!', token });
+        res.json({ message: '2차 인증 성공!', token });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -233,11 +233,11 @@ router.post('/verify-bio', async (req, res) => {
     try {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
-        if (!user) return res.status(401).json({ message: '❌ 사용자를 찾을 수 없습니다.' });
-        if (!user.otp_expiry) return res.status(401).json({ message: '❌ 유효한 2차 인증 요청이 없습니다.' });
+        if (!user) return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
+        if (!user.otp_expiry) return res.status(401).json({ message: '유효한 2차 인증 요청이 없습니다.' });
         if (new Date() > new Date(user.otp_expiry)) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-            return res.status(401).json({ message: '⏰ 인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
+            return res.status(401).json({ message: '인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
         }
 
         // [신뢰 기기 검증] 이 deviceId가 서버에 등록된 신뢰 기기인지 확인
@@ -247,7 +247,7 @@ router.post('/verify-bio', async (req, res) => {
             [user.id, deviceId]
         );
         if (!devices[0] || devices[0].is_trusted !== 1) {
-            return res.status(403).json({ message: '🚨 미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
+            return res.status(403).json({ message: '미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
         }
 
         // 클라이언트 Secure Enclave에서 생체 인증 통과 + 서버 신뢰 기기 검증 통과
@@ -257,7 +257,7 @@ router.post('/verify-bio', async (req, res) => {
             [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
         
         const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
-        res.json({ message: '🧬 생체 인증 성공!', token });
+        res.json({ message: '생체 인증 성공!', token });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });

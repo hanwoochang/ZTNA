@@ -15,10 +15,12 @@ type Props = {
     setPassword: (password: string) => void;
     ipAddress: string;
     deviceId: string;
+    loginError?: string;
+    isLoading?: boolean;
     handleLogin: () => void;
 };
 
-export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress, deviceId, handleLogin }: Props) => {
+export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress, deviceId, loginError, isLoading, handleLogin }: Props) => {
     const { styles, colors } = useAppStyles();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,12 +55,19 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
                 </View>
             </View>
 
+            {!!loginError && (
+                <Text style={{ color: colors.danger, marginBottom: 8, fontSize: 13, alignSelf: 'flex-start' }}>
+                    {loginError}
+                </Text>
+            )}
+
             <TextInput
-                style={styles.input}
+                style={[styles.input, !!loginError && { borderColor: colors.danger, borderWidth: 1 }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email Address"
                 placeholderTextColor={colors.subText}
+                keyboardType="email-address"
                 autoCapitalize="none"
             />
             <TextInput
@@ -71,11 +80,12 @@ export const LoginScreen = ({ email, setEmail, password, setPassword, ipAddress,
             />
 
             <TouchableOpacity
-                style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center' }]}
+                style={[styles.button, { marginTop: 16, flexDirection: 'row', justifyContent: 'center', opacity: isLoading ? 0.7 : 1 }]}
                 onPress={handleLogin}
+                disabled={isLoading}
             >
                 <Icon name="arrow-right" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Continue</Text>
+                <Text style={styles.buttonText}>{isLoading ? 'Connecting...' : 'Continue'}</Text>
             </TouchableOpacity>
         </Animated.View>
     );
