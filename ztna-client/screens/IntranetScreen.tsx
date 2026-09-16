@@ -13,27 +13,10 @@ import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
 
+import { Feather } from '@expo/vector-icons';
+
 const Icon = ({ name, size = 20, color, style }: { name: string, size?: number, color?: string, style?: any }) => {
-    let source;
-    switch(name) {
-        case 'clock': source = require('../assets/img/clock.svg'); break;
-        case 'check-circle': source = require('../assets/img/check-circle.svg'); break;
-        case 'file-text': source = require('../assets/img/file-text.svg'); break;
-        case 'download': source = require('../assets/img/download.svg'); break;
-        case 'plus': source = require('../assets/img/plus.svg'); break;
-        case 'user': source = require('../assets/img/user.svg'); break;
-        case 'settings': source = require('../assets/img/settings.svg'); break;
-        case 'sun': source = require('../assets/img/sun.svg'); break;
-        case 'moon': source = require('../assets/img/moon.svg'); break;
-        case 'monitor': source = require('../assets/img/monitor.svg'); break;
-        case 'shield': source = require('../assets/img/shield.svg'); break;
-        case 'x': source = require('../assets/img/x.svg'); break;
-        case 'trash-2': source = require('../assets/img/trash-2.svg'); break;
-        case 'edit-2': source = require('../assets/img/edit-2.svg'); break;
-        case 'calendar': source = require('../assets/img/calendar.svg'); break;
-        default: source = require('../assets/img/check.svg'); break;
-    }
-    return <Image source={source} style={[{ width: size, height: size, tintColor: color }, style]} />;
+    return <Feather name={name as any} size={size} color={color} style={style} />;
 };
 
 type Props = {
@@ -46,10 +29,11 @@ type Props = {
 
 // 1. 근태 관리 탭
 const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handleAttendance, employees, fetchEmployees, styles, colors }: any) => {
-    const { width } = Dimensions.get('window');
+    const { width } = useWindowDimensions();
     const scrollViewRef = useRef<ScrollView>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [refreshing, setRefreshing] = useState(false);
+    const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
 
     useEffect(() => {
         fetchEmployees();
@@ -81,6 +65,96 @@ const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handle
         const page = Math.round(x / width);
         if (currentPage !== page) setCurrentPage(page);
     };
+
+    const isDesktop = width > 768;
+
+    if (isDesktop) {
+        return (
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+                {/* 메인: 출퇴근 관리 */}
+                <View style={{ flex: 1 }}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 40, flexGrow: 1, justifyContent: 'center' }}>
+                        
+                        <View style={{ position: 'absolute', top: 40, right: 40, zIndex: 10 }}>
+                            <Pressable 
+                                onPress={() => setIsDirectoryOpen(!isDirectoryOpen)}
+                                style={({ hovered }) => [
+                                    { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
+                                    hovered ? { backgroundColor: colors.background } : {}
+                                ]}
+                            >
+                                <Icon name="users" size={18} color={colors.text} style={{ marginRight: 8 }} />
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+                                    {isDirectoryOpen ? 'Close Directory' : 'Open Directory'}
+                                </Text>
+                            </Pressable>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32, justifyContent: 'center' }}>
+                            <Icon name="clock" size={28} color={colors.text} style={{ marginRight: 12 }} />
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Attendance Tracker</Text>
+                        </View>
+                        
+                        <View style={[styles.cardFeatured, { alignItems: 'center', paddingVertical: 48, alignSelf: 'center', width: '100%', maxWidth: 400 }]}>
+                            <Text style={styles.heading3}>Today's Record</Text>
+                            <Text style={styles.infoText}>In: {formatTime(attendanceData.check_in_time)}</Text>
+                            <Text style={styles.infoText}>Out: {formatTime(attendanceData.check_out_time)}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 16, justifyContent: 'center', marginTop: 32 }}>
+                            <Pressable 
+                                style={({ hovered }) => [styles.button, { flex: 1, maxWidth: 200, flexDirection: 'row', justifyContent: 'center' }, hovered ? { opacity: 0.8 } : {}]} 
+                                onPress={() => handleAttendance('check-in')} 
+                                disabled={isLoading}
+                            >
+                                <Icon name="check-circle" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                                <Text style={styles.buttonText}>Check In</Text>
+                            </Pressable>
+                            <Pressable 
+                                style={({ hovered }) => [styles.buttonOutline, { flex: 1, maxWidth: 200, flexDirection: 'row', justifyContent: 'center' }, hovered ? { backgroundColor: colors.borderSoft } : {}]} 
+                                onPress={() => handleAttendance('check-out')} 
+                                disabled={isLoading}
+                            >
+                                <Icon name="clock" size={20} color={colors.text} style={{ marginRight: 8 }} />
+                                <Text style={styles.buttonOutlineText}>Check Out</Text>
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                </View>
+
+                {/* 우측 패널: 직원 리스트 */}
+                {isDirectoryOpen && (
+                    <View style={{ width: 480, borderLeftWidth: 1, borderLeftColor: colors.borderSoft, backgroundColor: colors.background }}>
+                        <ScrollView 
+                            showsVerticalScrollIndicator={true} 
+                            contentContainerStyle={{ padding: 32 }}
+                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
+                                <Icon name="users" size={24} color={colors.text} style={{ marginRight: 12 }} />
+                                <Text style={[styles.heading2, { marginBottom: 0 }]}>Employee Directory</Text>
+                            </View>
+                            <View style={{ flexDirection: 'column', gap: 12 }}>
+                                {employees?.map((emp: any) => (
+                                    <View key={emp.id} style={{ backgroundColor: colors.cardBackground, padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.borderSoft, ...Platform.select({ web: { boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)' } as any }) }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.field, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                <Icon name="user" size={18} color={colors.subText} />
+                                            </View>
+                                            <View>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.email.split('@')[0]}</Text>
+                                                <Text style={{ fontSize: 12, color: colors.subText }}>{emp.email}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+                )}
+            </View>
+        );
+    }
 
     return (
         <View style={{ flex: 1 }}>
@@ -170,6 +244,8 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
     const [editContent, setEditContent] = useState('');
 
     const currentUserHandle = email?.split('@')[0] || '';
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768;
 
     const handleCreate = async () => {
         const success = await createNotice(newTitle, newContent);
@@ -201,7 +277,7 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
     };
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
                 <Icon name="shield" size={28} color={colors.text} style={{ marginRight: 12 }} />
                 <Text style={[styles.title, { textAlign: 'left', marginBottom: 0 }]}>Intelligence</Text>
@@ -248,11 +324,19 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
                                 {notice.author} • {notice.date}{notice.is_edited ? ' (수정됨)' : ''}
                             </Text>
                         </View>
+                        {isDesktop && isAuthor && (
+                            <TouchableOpacity 
+                                style={{ padding: 12, backgroundColor: colors.danger + '20', borderRadius: 12, marginLeft: 12 }} 
+                                onPress={(e) => { e.stopPropagation(); deleteNotice(notice.id); }}
+                            >
+                                <Icon name="trash-2" size={18} color={colors.danger} />
+                            </TouchableOpacity>
+                        )}
                     </TouchableOpacity>
                 );
                 return (
                     <View key={notice.id} style={{ marginBottom: 12 }}>
-                        {isAuthor ? (
+                        {!isDesktop && isAuthor ? (
                             <Swipeable renderRightActions={() => renderRightActions(notice.id)}>
                                 {CardContent}
                             </Swipeable>
@@ -266,7 +350,7 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
             {/* 새 글 작성 모달 */}
             <Modal visible={modalVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isDesktop && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
                         <Text style={styles.heading2}>New Notice</Text>
                         <TextInput style={styles.input} placeholder="Title" placeholderTextColor={colors.subText} value={newTitle} onChangeText={setNewTitle} />
                         <TextInput style={[styles.input, { height: 120, textAlignVertical: 'top' }]} placeholder="Content" placeholderTextColor={colors.subText} multiline value={newContent} onChangeText={setNewContent} />
@@ -285,7 +369,7 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
             {/* 상세 보기 / 수정 모달 */}
             <Modal visible={detailVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isDesktop && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
                         {!isEditing ? (
                             <>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -374,13 +458,13 @@ const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, sty
     };
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 8 }}>
                 <Icon name="calendar" size={28} color={colors.text} style={{ marginRight: 12 }} />
                 <Text style={[styles.title, { textAlign: 'left', marginBottom: 0 }]}>Schedule</Text>
             </View>
             
-            <View style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ backgroundColor: colors.cardBackground, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderSoft, ...Platform.select({ web: { boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' } as any }) }}>
                 <Calendar
                     monthFormat={'yyyy년 MM월'}
                     onDayPress={handleDayPress}
@@ -464,6 +548,10 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
 
     useEffect(() => {
         const loadAuth = async () => {
+            if (Platform.OS === 'web') {
+                setAuthMethod('otp');
+                return;
+            }
             const saved = await AsyncStorage.getItem('authMethod');
             if (saved === 'bio') setAuthMethod('bio');
         };
@@ -476,7 +564,7 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
     };
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
                 <Icon name="settings" size={28} color={colors.text} style={{ marginRight: 12 }} />
                 <Text style={[styles.title, { textAlign: 'left', marginBottom: 0 }]}>Settings</Text>
@@ -510,14 +598,16 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
                         Email OTP
                     </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => changeAuth('bio')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: authMethod === 'bio' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                        {authMethod === 'bio' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
-                    </View>
-                    <Text style={[styles.infoText, authMethod === 'bio' && styles.highlight, { marginBottom: 0 }]}>
-                        FaceID/Fingerprint
-                    </Text>
-                </TouchableOpacity>
+                {Platform.OS !== 'web' && (
+                    <TouchableOpacity onPress={() => changeAuth('bio')} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: authMethod === 'bio' ? colors.accent : colors.borderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                            {authMethod === 'bio' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />}
+                        </View>
+                        <Text style={[styles.infoText, authMethod === 'bio' && styles.highlight, { marginBottom: 0 }]}>
+                            FaceID/Fingerprint
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <View style={[styles.cardFeatured, { marginTop: 24 }]}>
@@ -559,17 +649,31 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
     );
 };
 
-import { NavigationContainer, NavigationIndependentTree } from '@react-navigation/native';
-import { usePreventScreenCapture } from 'expo-screen-capture';
+import { NavigationContainer, NavigationIndependentTree, useNavigationContainerRef } from '@react-navigation/native';
+import * as ScreenCapture from 'expo-screen-capture';
+import { Platform, useWindowDimensions, Pressable } from 'react-native';
 
 export const IntranetScreen = (props: Props) => {
     const { styles, colors } = useAppStyles();
     const intranet = useIntranet();
     const { isDark } = useTheme();
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    
+    // Responsive dashboard
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768;
+    const navigationRef = useNavigationContainerRef();
+    const [currentRoute, setCurrentRoute] = useState('Attendance');
 
     // 사내망(기밀) 진입 시 화면 캡처 원천 차단 (iOS/Android 지원)
-    usePreventScreenCapture();
+    useEffect(() => {
+        if (Platform.OS !== 'web') {
+            ScreenCapture.preventScreenCaptureAsync();
+            return () => {
+                ScreenCapture.allowScreenCaptureAsync();
+            };
+        }
+    }, []);
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -579,11 +683,87 @@ export const IntranetScreen = (props: Props) => {
         }).start();
     }, [fadeAnim]);
 
+    const navigateTo = (routeName: string) => {
+        if (navigationRef.isReady()) {
+            navigationRef.navigate(routeName as never);
+        }
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <Animated.View style={[{ flex: 1, opacity: fadeAnim }]}>
-                <NavigationIndependentTree>
-                    <NavigationContainer theme={{
+            <Animated.View style={[{ flex: 1, flexDirection: isDesktop ? 'row' : 'column', opacity: fadeAnim }]}>
+                
+                {isDesktop && (
+                    <View style={{ width: 260, backgroundColor: colors.cardBackground, borderRightWidth: 1, borderRightColor: colors.borderSoft, padding: 24, justifyContent: 'space-between' }}>
+                        <View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 40 }}>
+                                <Icon name="shield" size={28} color={colors.text} style={{ marginRight: 12 }} />
+                                <Text style={[styles.heading2, { marginBottom: 0 }]}>ZTNA</Text>
+                            </View>
+
+                            <View style={{ gap: 8 }}>
+                                {['Attendance', 'Documents', 'Schedule', 'Settings'].map(route => {
+                                    const isActive = currentRoute === route;
+                                    let iconName = 'check';
+                                    if (route === 'Attendance') iconName = 'clock';
+                                    else if (route === 'Documents') iconName = 'file-text';
+                                    else if (route === 'Schedule') iconName = 'calendar';
+                                    else if (route === 'Settings') iconName = 'settings';
+
+                                    return (
+                                        <Pressable 
+                                            key={route} 
+                                            onPress={() => navigateTo(route)}
+                                            style={({ hovered }) => [
+                                                { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
+                                                isActive ? { backgroundColor: colors.borderSoft } : (hovered ? { backgroundColor: colors.background } : {})
+                                            ]}
+                                        >
+                                            <Icon name={iconName} size={20} color={isActive ? colors.text : colors.subText} style={{ marginRight: 12 }} />
+                                            <Text style={[styles.infoText, { marginBottom: 0 }, isActive ? { color: colors.text, fontWeight: '600' } : { color: colors.subText }]}>{route}</Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                        
+                        <View>
+                            <View style={{ padding: 16, backgroundColor: colors.background, borderRadius: 12, marginBottom: 16 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                        <Text style={{ color: colors.onPrimary, fontWeight: 'bold' }}>{props.email[0].toUpperCase()}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.infoText, { marginBottom: 0, fontWeight: '600', fontSize: 14 }]} numberOfLines={1}>{props.email}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <Pressable 
+                                onPress={props.handleLogout}
+                                style={({ hovered }) => [
+                                    { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
+                                    hovered ? { backgroundColor: colors.background } : {}
+                                ]}
+                            >
+                                <Icon name="x" size={20} color={colors.danger} style={{ marginRight: 12 }} />
+                                <Text style={[styles.infoText, { marginBottom: 0, color: colors.danger, fontWeight: '600' }]}>Logout</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                )}
+
+                <View style={{ flex: 1, backgroundColor: colors.background }}>
+                    <NavigationIndependentTree>
+                        <NavigationContainer 
+                            ref={navigationRef}
+                            onStateChange={(state) => {
+                                if (state) {
+                                    const current = state.routes[state.index].name;
+                                    setCurrentRoute(current);
+                                }
+                            }}
+                            theme={{
                         dark: isDark,
                         colors: {
                             primary: colors.primary,
@@ -599,6 +779,7 @@ export const IntranetScreen = (props: Props) => {
                             screenOptions={({ route }) => ({
                                 headerShown: false,
                                 tabBarStyle: {
+                                    display: isDesktop ? 'none' : 'flex',
                                     backgroundColor: colors.background,
                                     borderTopColor: colors.borderSoft,
                                     height: 64,
@@ -609,13 +790,13 @@ export const IntranetScreen = (props: Props) => {
                                 tabBarInactiveTintColor: colors.subText,
                                 sceneStyle: { backgroundColor: colors.background },
                                 tabBarIcon: ({ color, size }) => {
-                                    let iconSource;
-                                    if (route.name === 'Attendance') iconSource = require('../assets/img/clock.svg');
-                                    else if (route.name === 'Documents') iconSource = require('../assets/img/file-text.svg');
-                                    else if (route.name === 'Schedule') iconSource = require('../assets/img/calendar.svg');
-                                    else if (route.name === 'Settings') iconSource = require('../assets/img/settings.svg');
+                                    let iconName;
+                                    if (route.name === 'Attendance') iconName = 'clock';
+                                    else if (route.name === 'Documents') iconName = 'file-text';
+                                    else if (route.name === 'Schedule') iconName = 'calendar';
+                                    else if (route.name === 'Settings') iconName = 'settings';
                                     
-                                    return <Image source={iconSource} style={{ width: size, height: size, tintColor: color }} />;
+                                    return <Icon name={iconName as string} size={size} color={color} />;
                                 },
                             })}
                         >
@@ -634,6 +815,7 @@ export const IntranetScreen = (props: Props) => {
                         </Tab.Navigator>
                     </NavigationContainer>
                 </NavigationIndependentTree>
+                </View>
             </Animated.View>
         </SafeAreaView>
     );

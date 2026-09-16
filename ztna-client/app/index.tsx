@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import * as Network from 'expo-network';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from '../utils/storage';
 
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
 import { getDeviceId } from '../utils/deviceId';
@@ -59,7 +59,7 @@ export default function HomeScreen() {
             }
 
             try {
-                const savedToken = await SecureStore.getItemAsync('jwt_token');
+                const savedToken = await Storage.getItemAsync('jwt_token');
                 if (savedToken) await testGatewayAccess(savedToken, true);
             } catch {
                 console.log('[자동 복구 실패] 로그인 화면으로 이동');

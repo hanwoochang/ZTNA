@@ -1,7 +1,7 @@
 //기기 식별
 
 import * as Application from 'expo-application';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from './storage';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { randomUUID } from 'expo-crypto';
@@ -17,10 +17,10 @@ export const getDeviceId = async (): Promise<string> => {
     }
     if (Platform.OS === 'web') {
         try {
-            const stored = localStorage.getItem('web_device_id');
+            const stored = await Storage.getItemAsync('web_device_id');
             if (stored) return stored;
             const newId = `web-${randomUUID()}`;
-            localStorage.setItem('web_device_id', newId);
+            await Storage.setItemAsync('web_device_id', newId);
             return newId;
         } catch {
             return `web-${randomUUID()}`;

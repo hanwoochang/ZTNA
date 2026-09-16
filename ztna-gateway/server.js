@@ -8,29 +8,7 @@ const mysql = require('mysql2/promise'); // DB 연결 추가
 const app = express();
 const port = process.env.PORT || 4000;
 
-app.use(cors({
-    origin: function(origin, callback) {
-        // Origin 없는 요청 = 모바일 앱 → 허용
-        if (!origin) {
-            return callback(null, true);
-        }
-
-        // 브라우저 요청은 허가된 IP만 허용
-        const allowedOrigins = [
-            `http://${process.env.CLIENT_IP}`,
-            `https://${process.env.CLIENT_IP}`,
-        ];
-
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.log(`[CORS 차단] 허가되지 않은 도메인: ${origin}`);
-            callback(new Error('허가되지 않은 도메인입니다.'), false);
-        }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Authorization', 'Content-Type']
-}));
+app.use(cors());
 
 //Policy Server와 같은 DB 연결
 const pool = mysql.createPool({

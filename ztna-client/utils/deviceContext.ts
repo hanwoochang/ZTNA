@@ -2,7 +2,7 @@
 
 import * as Battery from 'expo-battery';
 import * as Network from 'expo-network';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from './storage';
 
 export type DeviceContext = {
     isWifi: boolean;
@@ -17,10 +17,10 @@ export const getDeviceContext = async (): Promise<DeviceContext> => {
 
     let previousBatteryLevel: number | null = null;
     try {
-        const stored = await SecureStore.getItemAsync('battery_level');
+        const stored = await Storage.getItemAsync('battery_level');
         if (stored) previousBatteryLevel = parseFloat(stored);
     } catch {}
 
-    await SecureStore.setItemAsync('battery_level', batteryLevel.toString());
+    await Storage.setItemAsync('battery_level', batteryLevel.toString());
     return { isWifi, batteryLevel, previousBatteryLevel };
 };

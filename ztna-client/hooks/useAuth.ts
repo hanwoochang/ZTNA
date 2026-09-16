@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from '../utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Alert } from 'react-native';
@@ -23,7 +23,7 @@ export const useAuth = () => {
             setSecretData(gatewayResponse.data.secretData);
             setIsLoggedIn(true);
         } catch (error) {
-            await SecureStore.deleteItemAsync('jwt_token');
+            await Storage.deleteItemAsync('jwt_token');
             if (!isAutoRecover) {
                 Alert.alert('🚨 기밀망 진입 실패', '문지기에게 차단당했습니다.');
             }
@@ -77,7 +77,7 @@ export const useAuth = () => {
                                     latitude: location?.latitude || null,
                                     longitude: location?.longitude || null,
                                 });
-                                await SecureStore.setItemAsync('jwt_token', bioVerifyResponse.data.token);
+                                await Storage.setItemAsync('jwt_token', bioVerifyResponse.data.token);
                                 testGatewayAccess(bioVerifyResponse.data.token);
                                 return; // 성공시 종료
                             } catch (bioError: any) {
@@ -99,7 +99,7 @@ export const useAuth = () => {
             }
 
             if (loginResponse.data.token) {
-                await SecureStore.setItemAsync('jwt_token', loginResponse.data.token);
+                await Storage.setItemAsync('jwt_token', loginResponse.data.token);
                 testGatewayAccess(loginResponse.data.token);
             }
         } catch (error: any) {
@@ -148,7 +148,7 @@ export const useAuth = () => {
             if (verifyResponse.data.token) {
                 Alert.alert('✅ 인증 성공!', '출입증이 발급되었습니다.');
                 setShowOtpInput(false);
-                await SecureStore.setItemAsync('jwt_token', verifyResponse.data.token);
+                await Storage.setItemAsync('jwt_token', verifyResponse.data.token);
                 testGatewayAccess(verifyResponse.data.token);
             }
         } catch (error: any) {
@@ -167,7 +167,7 @@ export const useAuth = () => {
 
     const handleLogout = async () => {
         try {
-            const token = await SecureStore.getItemAsync('jwt_token');
+            const token = await Storage.getItemAsync('jwt_token');
             if (token) {
                 await axios.post(`${POLICY_SERVER_URL}/api/logout`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -176,7 +176,7 @@ export const useAuth = () => {
         } catch (error) {
             console.log('토큰 폐기 요청 실패:', error);
         } finally {
-            await SecureStore.deleteItemAsync('jwt_token');
+            await Storage.deleteItemAsync('jwt_token');
             setIsLoggedIn(false);
             setShowOtpInput(false);
             setSecretData('');

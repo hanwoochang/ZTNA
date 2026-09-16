@@ -49,8 +49,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (ipAddress === '::1') ipAddress = '127.0.0.1';
 
     const now = new Date();
-    const loginHour = now.getHours(); // 🕒 테스트용: 강제로 새벽 3시로 조작
-    //const loginHour = 3;
+    //const loginHour = now.getHours(); // 🕒 테스트용: 강제로 새벽 3시로 조작
+    const loginHour = 3;
     let riskScore = 0;
     let reasons = [];
 

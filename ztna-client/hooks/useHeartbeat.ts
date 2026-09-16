@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from '../utils/storage';
 import { Alert } from 'react-native';
 import { POLICY_SERVER_URL } from '../constants/config';
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
@@ -21,7 +21,7 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                 }
 
                 try {
-                    const token = await SecureStore.getItemAsync('jwt_token');
+                    const token = await Storage.getItemAsync('jwt_token');
                     if (!token) return;
 
                     const response = await axios.post(`${POLICY_SERVER_URL}/api/verify-context`,
@@ -30,7 +30,7 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                     );
 
                     if (response.data.token) {
-                        await SecureStore.setItemAsync('jwt_token', response.data.token);
+                        await Storage.setItemAsync('jwt_token', response.data.token);
                     }
                     if (response.data.action === 'TERMINATE') {
                         Alert.alert('🛡️ 보안 경고', response.data.message);
