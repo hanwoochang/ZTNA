@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,9 @@ import { useAppStyles } from '../styles/styles';
 import { useIntranet } from '../hooks/useIntranet';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { useTheme } from '../hooks/useTheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainer, NavigationIndependentTree, useNavigationContainerRef } from '@react-navigation/native';
+import * as ScreenCapture from 'expo-screen-capture';
 
 const Tab = createBottomTabNavigator();
 
@@ -501,7 +504,8 @@ const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, sty
                     <View style={{ marginBottom: 16 }}>
                         {groupedEvents[selectedDate]?.length > 0 ? (
                             groupedEvents[selectedDate].map((ev: any) => {
-                                const isAuthor = ev.author === (email?.split('@')[0] || '익명') || ev.author === '관리자';
+                                const currentUserHandle = email?.split('@')[0] || '익명';
+                                const isAuthor = ev.author === currentUserHandle || currentUserHandle === '관리자';
                                 return (
                                     <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSoft }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -539,7 +543,6 @@ const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, sty
     );
 };
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 5. 설정 탭
 const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors }: any) => {
@@ -648,10 +651,6 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
         </ScrollView>
     );
 };
-
-import { NavigationContainer, NavigationIndependentTree, useNavigationContainerRef } from '@react-navigation/native';
-import * as ScreenCapture from 'expo-screen-capture';
-import { Platform, useWindowDimensions, Pressable } from 'react-native';
 
 export const IntranetScreen = (props: Props) => {
     const { styles, colors } = useAppStyles();
