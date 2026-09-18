@@ -13,6 +13,7 @@ app.use(express.json());
 // 라우터 연결
 app.use('/api', require('./routes/auth'));
 app.use('/api', require('./routes/session'));
+app.use('/api/admin', require('./routes/admin'));
 
 // 만료된 블랙리스트 토큰 1시간마다 자동 정리
 const pool = require('./db');

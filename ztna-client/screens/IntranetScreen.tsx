@@ -191,8 +191,8 @@ const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handle
                         </View>
                         {employees?.map((emp: any) => (
                             <View key={emp.id} style={[styles.card, { marginBottom: 12 }]}>
-                                <Text style={[styles.heading3, { marginBottom: 4 }]}>업데이트 예정</Text>
-                                <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서: 업데이트 예정</Text>
+                                <Text style={[styles.heading3, { marginBottom: 4 }]}>{emp.name || '이름 미상'} <Text style={{fontSize: 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
+                                <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서: {emp.department || '미배정'}</Text>
                                 <Text style={styles.infoText}>이메일: {emp.email}</Text>
                             </View>
                         ))}

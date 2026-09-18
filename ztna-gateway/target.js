@@ -265,7 +265,7 @@ initEventsDB();
 
 app.get('/api/employees', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id, email FROM users ORDER BY email ASC');
+        const [rows] = await pool.query('SELECT id, email, name, department, role FROM users ORDER BY email ASC');
         res.json(rows);
     } catch (err) {
         console.error('[임직원 목록 조회 에러]:', err);

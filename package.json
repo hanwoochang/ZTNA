@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -c \"blue,green,yellow,magenta\" -n \"POLICY,GATEWAY,TARGET,CLIENT\" \"cd ztna-policy-server && node server.js\" \"cd ztna-gateway && node server.js\" \"cd ztna-gateway && node target.js\" \"cd ztna-client && npx expo start -c\""
+    "dev": "concurrently -c \"blue,green,yellow,magenta,cyan\" -n \"POLICY,GATEWAY,TARGET,CLIENT,ADMIN_WEB\" \"cd ztna-policy-server && node server.js\" \"cd ztna-gateway && node server.js\" \"cd ztna-gateway && node target.js\" \"cd ztna-client && npx expo start -c\" \"cd ztna-admin-web && npm run dev\""
   },
   "keywords": [],
   "author": "",

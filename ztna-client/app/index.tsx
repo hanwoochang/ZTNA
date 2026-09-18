@@ -18,8 +18,8 @@ import { OtpScreen } from '../screens/OtpScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 
 export default function HomeScreen() {
-    const [email, setEmail] = useState('043kws@gmail.com');
-    const [password, setPassword] = useState('mypassword123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [deviceId, setDeviceId] = useState('수집 중...');
     const [ipAddress, setIpAddress] = useState('수집 중...');
     const [isDeviceSafe, setIsDeviceSafe] = useState(true);

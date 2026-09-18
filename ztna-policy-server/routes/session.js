@@ -47,9 +47,9 @@ router.post('/verify-context', async (req, res) => {
         }
 
         const newToken = jwt.sign(
-            { userId: decoded.userId, email: decoded.email, jti: randomUUID() },
+            { userId: decoded.userId, email: decoded.email, role: decoded.role, department: decoded.department, jti: randomUUID() },
             process.env.JWT_SECRET,
-            { expiresIn: '5m' }
+            { expiresIn: '15m' }
         );
         res.json({ status: 'SAFE', token: newToken });
     } catch (error) {

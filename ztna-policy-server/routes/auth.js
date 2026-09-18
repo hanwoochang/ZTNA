@@ -161,7 +161,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             // 로그인 완벽 성공 시 IP 기반 Rate Limit 카운트 초기화
             loginLimiter.resetKey(ipAddress);
 
-            const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
+            const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
             return res.json({ message: 'ZTNA 출입증 발급 성공', token });
         }
     } catch (error) {
@@ -212,7 +212,7 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         // OTP 인증 완벽 성공 시 IP 기반 Rate Limit 카운트 초기화
         otpLimiter.resetKey(ipAddress);
         
-        const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
+        const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
         res.json({ message: '2차 인증 성공!', token });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
@@ -256,7 +256,7 @@ router.post('/verify-bio', async (req, res) => {
         await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
             [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
         
-        const token = jwt.sign({ userId: user.id, email: user.email, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '5m' });
+        const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
         res.json({ message: '생체 인증 성공!', token });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
