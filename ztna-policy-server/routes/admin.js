@@ -148,4 +148,19 @@ router.patch('/devices/:id/revoke', async (req, res) => {
     }
 });
 
+// 7. 기기 소유 형태 변경 (BYOD <-> CORPORATE)
+router.patch('/devices/:id/type', async (req, res) => {
+    try {
+        const { device_type } = req.body;
+        if (!['BYOD', 'CORPORATE'].includes(device_type)) {
+            return res.status(400).json({ message: '잘못된 기기 타입입니다.' });
+        }
+        const [result] = await pool.query('UPDATE devices SET device_type = ? WHERE id = ?', [device_type, req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
+        res.json({ message: '기기 소유 형태가 변경되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '기기 소유 형태 변경 실패', error: error.message });
+    }
+});
+
 module.exports = router;

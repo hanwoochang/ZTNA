@@ -369,6 +369,17 @@ function DevicesPage() {
     }
   };
 
+  const handleToggleType = async (id: number, currentType: string) => {
+    const newType = currentType === 'BYOD' ? 'CORPORATE' : 'BYOD';
+    if (!confirm(`기기 소유 형태를 [${newType}](으)로 변경하시겠습니까?`)) return;
+    try {
+      await api.patch(`/admin/devices/${id}/type`, { device_type: newType });
+      fetchDevices();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '변경 실패');
+    }
+  };
+
   const filtered = devices.filter(d =>
     d.device_identifier?.toLowerCase().includes(search.toLowerCase()) ||
     (d.name || d.email)?.toLowerCase().includes(search.toLowerCase())
@@ -403,7 +414,13 @@ function DevicesPage() {
                 <td className="pl-10 pr-4 font-mono text-body text-sm" style={{ paddingTop: '10px', paddingBottom: '10px' }}>{d.device_identifier}</td>
                 <td className="px-4 font-semibold text-ink" style={{ paddingTop: '10px', paddingBottom: '10px' }}>{d.name || d.email}</td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
-                  <span className="text-sm font-bold tracking-wide uppercase" style={{ color: d.device_type === 'BYOD' ? '#f54e00' : '#26251e' }}>{d.device_type || '-'}</span>
+                  <button 
+                    onClick={() => d.email !== 'admin@company.com' && handleToggleType(d.id, d.device_type)}
+                    className={`text-sm font-bold tracking-wide uppercase px-2 py-1 rounded transition-colors ${d.email === 'admin@company.com' ? 'cursor-default' : 'hover:bg-canvas-soft'}`} 
+                    style={{ color: d.device_type === 'BYOD' ? '#f54e00' : '#10b981', border: `1px solid ${d.device_type === 'BYOD' ? '#f54e0030' : '#10b98130'}` }}
+                  >
+                    {d.device_type || '-'}
+                  </button>
                 </td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
                   <div className="flex items-center gap-2">
