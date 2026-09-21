@@ -23,6 +23,47 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// 1-1. 시간대별 위험도 트렌드 API (24시간)
+router.get('/stats/trend', async (req, res) => {
+    try {
+        const [trend] = await pool.query(`
+            SELECT 
+                DATE_FORMAT(created_at, '%H:00') as time,
+                COUNT(*) as count,
+                ROUND(AVG(risk_score), 1) as avgRisk
+            FROM access_logs
+            WHERE created_at >= NOW() - INTERVAL 24 HOUR
+            GROUP BY time
+            ORDER BY time ASC
+        `);
+        res.json(trend);
+    } catch (error) {
+        res.status(500).json({ message: '트렌드 조회 실패', error: error.message });
+    }
+});
+
+// 1-2. 요주의 인물 TOP 5 API
+router.get('/stats/top-risky', async (req, res) => {
+    try {
+        const [topRisky] = await pool.query(`
+            SELECT 
+                u.name, 
+                u.department, 
+                SUM(l.risk_score) as totalRisk, 
+                COUNT(l.id) as incidentCount
+            FROM access_logs l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.created_at >= NOW() - INTERVAL 7 DAY
+            GROUP BY u.id
+            ORDER BY totalRisk DESC
+            LIMIT 5
+        `);
+        res.json(topRisky);
+    } catch (error) {
+        res.status(500).json({ message: 'TOP 5 조회 실패', error: error.message });
+    }
+});
+
 // 2. 전체 유저 목록 조회
 router.get('/users', async (req, res) => {
     try {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Bell, Settings, Search } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
 
 // API 설정 (백엔드 정책 서버)
 const api = axios.create({ baseURL: 'http://localhost:3000/api' });
@@ -49,29 +50,23 @@ function LoginPage() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-canvas font-sans">
-      <div className="w-[440px] bg-card p-12 rounded-lg border border-hairline shadow-none">
+      <div className="bg-card rounded-lg border border-hairline shadow-none" style={{ width: "600px", padding: "64px" }}>
         <div className="flex justify-center mb-10">
-          <ShieldAlert size={56} className="text-primary" />
+          <ShieldAlert size={80} className="text-primary" />
         </div>
-        <h1 className="text-3xl font-semibold text-center mb-5 text-ink tracking-tight">Admin Login</h1>
-        <p className="text-center text-body mb-10 text-base">ZTNA v2.0 관제 센터에 로그인하세요.</p>
+        <h1 className="font-semibold text-center mb-5 text-ink tracking-tight" style={{ fontSize: "2.5rem" }}>Admin Login</h1>
+        <p className="text-center text-body mb-10" style={{ fontSize: "1.25rem" }}>ZTNA v2.0 관제 센터에 로그인하세요.</p>
         
         {error && <div className="bg-[#fae9ed] text-semantic-error p-5 rounded-md text-base mb-8 text-center border border-semantic-error/20">{error}</div>}
         
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <input 
-              type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full p-5 bg-canvas-soft border border-hairline rounded-md text-ink text-lg outline-none focus:bg-card focus:border-primary transition-all" 
-            />
+            <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:bg-card focus:border-primary transition-all" style={{ boxSizing: 'border-box', height: '84px', width: '100%', padding: '0 24px', fontSize: '1.5rem', display: 'block' }} />
           </div>
           <div>
-            <input 
-              type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full p-5 bg-canvas-soft border border-hairline rounded-md text-ink text-lg outline-none focus:bg-card focus:border-primary transition-all" 
-            />
+            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:bg-card focus:border-primary transition-all" style={{ boxSizing: 'border-box', height: '84px', width: '100%', padding: '0 24px', fontSize: '1.5rem', display: 'block' }} />
           </div>
-          <button type="submit" className="w-full bg-primary hover:bg-primary-active text-card p-5 rounded-md text-lg font-bold transition-all mt-6">
+          <button type="submit" className="w-full bg-primary hover:bg-primary-active text-card rounded-md font-bold transition-all mt-6" style={{ boxSizing: 'border-box', height: '84px', width: '100%', padding: '0 24px', fontSize: '1.5rem', display: 'block' }}>
             로그인
           </button>
         </form>
@@ -95,7 +90,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <h2 className="font-semibold text-xl text-ink tracking-tight">ZTNA Admin</h2>
         </div>
 
-        <nav className="flex-1 py-6 px-4 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <nav className="flex-1 py-4 px-4 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button 
             onClick={() => navigate('/dashboard')} 
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive('/dashboard') ? 'bg-canvas text-ink border border-hairline font-bold shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent font-semibold'}`}
@@ -146,10 +141,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 function Overview() {
   const [stats, setStats] = useState({ totalUsers: 0, totalDevices: 0, deniedToday: 0 });
   const [logs, setLogs] = useState<any[]>([]);
+  const [trend, setTrend] = useState<any[]>([]);
+  const [topRisky, setTopRisky] = useState<any[]>([]);
 
   useEffect(() => {
     api.get('/admin/stats').then(res => setStats(res.data)).catch(console.error);
     api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
+    api.get('/admin/stats/trend')
+      .then(res => {
+        const parsedData = res.data.map((d: any) => ({ ...d, avgRisk: Number(d.avgRisk) }));
+        setTrend(parsedData);
+      })
+      .catch(console.error);
+    api.get('/admin/stats/top-risky')
+      .then(res => {
+        const parsedData = res.data.map((d: any) => ({ ...d, totalRisk: Number(d.totalRisk) }));
+        setTopRisky(parsedData);
+      })
+      .catch(console.error);
   }, []);
 
   return (
@@ -169,7 +178,7 @@ function Overview() {
                 {stats.totalUsers} <span className="text-base font-medium text-muted">명</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-full border border-hairline flex items-center justify-center bg-canvas">
+            <div className="rounded-full border border-hairline flex items-center justify-center bg-canvas" style={{ width: '64px', height: '64px', flexShrink: 0 }}>
               <Users size={28} className="text-primary" />
             </div>
           </div>
@@ -182,7 +191,7 @@ function Overview() {
                 {stats.totalDevices} <span className="text-base font-medium text-muted">대</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-full border border-hairline flex items-center justify-center bg-canvas">
+            <div className="rounded-full border border-hairline flex items-center justify-center bg-canvas" style={{ width: '64px', height: '64px', flexShrink: 0 }}>
               <Server size={28} className="text-ink" />
             </div>
           </div>
@@ -195,11 +204,54 @@ function Overview() {
                 {stats.deniedToday} <span className="text-base font-medium text-muted">건</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-full border border-hairline flex items-center justify-center bg-canvas">
+            <div className="rounded-full border border-hairline flex items-center justify-center bg-canvas" style={{ width: '64px', height: '64px', flexShrink: 0 }}>
               <ShieldAlert size={28} className="text-semantic-error" />
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* MIDDLE SECTION: CHARTS */}
+      <div style={{ display: 'flex', gap: '24px' }}>
+        <div className="bg-card border border-hairline rounded-md shadow-sm flex flex-col" style={{ flex: '6' }}>
+          <div className="border-b border-hairline" style={{ padding: '20px 24px' }}>
+            <h3 className="text-ink text-base font-bold">시간대별 평균 위험도 트렌드 (최근 24시간)</h3>
+          </div>
+          <div className="flex-1 flex items-center justify-center" style={{ padding: '24px', height: '300px' }}>
+            <LineChart width={700} height={260} data={trend} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e5e0" />
+              <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#8f8e85', fontSize: 12 }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8f8e85', fontSize: 12 }} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e6e5e0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                labelStyle={{ fontWeight: 'bold', color: '#26251e', marginBottom: '4px' }}
+              />
+              <Line type="monotone" dataKey="avgRisk" stroke="#f54e00" strokeWidth={3} dot={{ r: 4, fill: '#f54e00', strokeWidth: 0 }} activeDot={{ r: 6 }} name="평균 위험도" />
+            </LineChart>
+          </div>
+        </div>
+
+        <div className="bg-card border border-hairline rounded-md shadow-sm flex flex-col" style={{ flex: '4' }}>
+          <div className="border-b border-hairline" style={{ padding: '20px 24px' }}>
+            <h3 className="text-ink text-base font-bold">요주의 인물 TOP 5 (누적 위험도)</h3>
+          </div>
+          <div className="flex-1 flex items-center justify-center" style={{ padding: '24px', height: '300px' }}>
+            <BarChart width={450} height={260} data={topRisky} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e6e5e0" />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#8f8e85', fontSize: 12 }} />
+              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#26251e', fontSize: 12, fontWeight: 'bold' }} width={80} />
+              <Tooltip 
+                cursor={{ fill: '#f7f7f4' }}
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e6e5e0' }}
+              />
+              <Bar dataKey="totalRisk" fill="#f54e00" radius={[0, 4, 4, 0]} barSize={32} name="누적 위험도">
+                {topRisky.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === 0 ? '#d43000' : index === 1 ? '#f54e00' : '#ff7a33'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </div>
         </div>
       </div>
 
@@ -272,9 +324,9 @@ function UsersPage() {
 
   return (
     <div className="bg-card rounded-lg border border-hairline overflow-hidden">
-      <div className="pl-14 pr-10 py-10 border-b border-hairline flex justify-between items-center bg-canvas-soft">
-        <h3 className="text-ink text-2xl font-bold tracking-tight">전사 임직원 목록</h3>
-        <button onClick={() => setShowModal(true)} className="bg-primary hover:bg-primary-active text-card px-8 py-4 rounded-md text-lg font-bold transition-all">
+      <div className="border-b border-hairline flex justify-between items-center bg-canvas-soft" style={{ padding: '16px 48px' }}>
+        <h2 className="text-2xl font-bold text-ink">전사 임직원 목록</h2>
+        <button onClick={() => setShowModal(true)} className="bg-primary hover:bg-primary-active text-card rounded-md font-bold transition-all" style={{ padding: "10px 24px", fontSize: "15px" }}>
           + 임직원 추가
         </button>
       </div>
@@ -283,25 +335,25 @@ function UsersPage() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-muted text-base uppercase font-bold border-b border-hairline">
-              <th className="pl-14 pr-8 py-6 w-1/4">이름</th>
-              <th className="px-8 py-6 w-1/4">이메일</th>
-              <th className="px-8 py-6 w-1/6">권한 (Role)</th>
-              <th className="px-8 py-6 w-1/6">부서</th>
-              <th className="px-8 py-6 w-1/6">상태</th>
+              <th className="pl-14 pr-8  w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이름</th>
+              <th className="px-8  w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이메일</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>권한 (Role)</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태</th>
             </tr>
           </thead>
           <tbody>
             {users.map(u => (
               <tr key={u.id} className="text-lg hover:bg-canvas transition-colors border-b border-hairline last:border-0">
-                <td className="pl-14 pr-8 py-8 font-semibold text-ink">{u.name || 'Unknown'}</td>
-                <td className="px-8 py-8 text-body">{u.email}</td>
-                <td className="px-8 py-8">
-                  <span className={`px-4 py-2 rounded-sm text-base font-bold tracking-wide uppercase ${u.role === 'ADMIN' ? 'bg-primary text-card' : 'bg-canvas-soft border border-hairline text-ink'}`}>
+                <td className="pl-14 pr-8  font-semibold text-ink" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.name || 'Unknown'}</td>
+                <td className="px-8  text-body" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.email}</td>
+                <td className="px-8 " style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                  <span className="text-base font-bold tracking-wide uppercase" style={{ color: u.role === 'ADMIN' ? '#f54e00' : '#26251e' }}>
                     {u.role}
                   </span>
                 </td>
-                <td className="px-8 py-8 text-body font-medium">{u.department}</td>
-                <td className="px-8 py-8">
+                <td className="px-8  text-body font-medium" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.department}</td>
+                <td className="px-8 " style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <div className="flex items-center gap-4">
                     <div className={`w-3.5 h-3.5 rounded-full ${u.is_active ? 'bg-semantic-success' : 'bg-semantic-error'}`}></div>
                     <span className="text-ink font-bold">{u.is_active ? '정상(Active)' : '정지됨'}</span>
@@ -377,11 +429,11 @@ function DevicesPage() {
 
   return (
     <div className="bg-card rounded-lg border border-hairline overflow-hidden">
-      <div className="pl-14 pr-10 py-10 border-b border-hairline flex justify-between items-center bg-canvas-soft">
-        <h3 className="text-ink text-2xl font-bold tracking-tight">단말기 자산 목록</h3>
+      <div className="border-b border-hairline flex justify-between items-center bg-canvas-soft" style={{ padding: '16px 48px' }}>
+        <h2 className="text-2xl font-bold text-ink">단말기 자산 목록</h2>
         <div className="relative">
-          <input type="text" placeholder="단말 검색..." className="bg-canvas text-lg text-ink rounded-md px-6 py-4 w-80 outline-none border border-hairline focus:border-primary" />
-          <Search size={20} className="absolute right-5 top-4.5 text-muted" />
+          <input type="text" placeholder="단말 검색..." className="bg-canvas text-ink rounded-md w-80 outline-none border border-hairline focus:border-primary" style={{ padding: "10px 16px", fontSize: "15px" }} />
+          <Search size={20} className="absolute text-muted" style={{ right: "16px", top: "50%", transform: "translateY(-50%)" }} />
         </div>
       </div>
 
@@ -389,30 +441,30 @@ function DevicesPage() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-muted text-base uppercase font-bold border-b border-hairline">
-              <th className="pl-14 pr-8 py-6 w-1/4">디바이스 ID</th>
-              <th className="px-8 py-6 w-1/4">소유자</th>
-              <th className="px-8 py-6 w-1/6">소유 형태</th>
-              <th className="px-8 py-6 w-1/6">보안 상태</th>
-              <th className="px-8 py-6 w-1/6">인가 여부</th>
+              <th className="pl-14 pr-8  w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>디바이스 ID</th>
+              <th className="px-8  w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>소유자</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>소유 형태</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>보안 상태</th>
+              <th className="px-8  w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>인가 여부</th>
             </tr>
           </thead>
           <tbody>
             {devices.map(d => (
               <tr key={d.id} className="text-lg hover:bg-canvas transition-colors border-b border-hairline last:border-0">
-                <td className="pl-14 pr-8 py-8 font-mono text-body">{d.device_identifier}</td>
-                <td className="px-8 py-8 font-semibold text-ink">{d.name || d.email}</td>
-                <td className="px-8 py-8">
-                  <span className={`px-4 py-2 rounded-sm text-base font-bold tracking-wide uppercase ${d.device_type === 'CORPORATE' ? 'bg-canvas-soft border border-hairline text-ink' : 'bg-[#fff0e5] text-primary'}`}>
+                <td className="pl-14 pr-8  font-mono text-body" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{d.device_identifier}</td>
+                <td className="px-8  font-semibold text-ink" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{d.name || d.email}</td>
+                <td className="px-8 " style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                  <span className="text-base font-bold tracking-wide uppercase" style={{ color: d.device_type === 'BYOD' ? '#f54e00' : '#26251e' }}>
                     {d.device_type}
                   </span>
                 </td>
-                <td className="px-8 py-8">
+                <td className="px-8 " style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <div className="flex items-center gap-4">
                     <div className={`w-3.5 h-3.5 rounded-full ${d.is_compliant ? 'bg-semantic-success' : 'bg-primary'}`}></div>
                     <span className="text-ink font-bold">{d.is_compliant ? '정상(Compliant)' : '취약함'}</span>
                   </div>
                 </td>
-                <td className="px-8 py-8">
+                <td className="px-8 " style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <div className="flex items-center gap-4">
                     <div className={`w-3.5 h-3.5 rounded-full ${d.is_trusted ? 'bg-semantic-success' : 'bg-muted'}`}></div>
                     <span className="text-ink font-bold">{d.is_trusted ? '인가됨(Trusted)' : '대기중'}</span>

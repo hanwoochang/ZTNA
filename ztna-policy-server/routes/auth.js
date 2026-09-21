@@ -65,79 +65,63 @@ router.post('/login', loginLimiter, async (req, res) => {
         const [devices] = await pool.query('SELECT * FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
         const currentDevice = devices[0];
 
+        // --- ZTNA 정책 엔진 (PDP) 3단계 엄격 판별 로직 (NIST SP 800-207 기반) ---
+        let action = 'ALLOW';
+
+        // 1. 즉시 차단 (DENY) 조건
         if (!currentDevice) {
-            riskScore += 30;
-            reasons.push('미등록 새로운 기기 접근');
-        } else if (!currentDevice.is_trusted) {
-            riskScore += 100;
-            reasons.push('신뢰할 수 없는 기기');
-        } else if (currentDevice.last_ip_address !== ipAddress) {
-            riskScore += 20;
-            reasons.push('평소와 다른 새로운 IP 위치');
+            riskScore = 100;
+            reasons.push('미등록 비인가 기기 접근 시도');
+        } else if (currentDevice.is_trusted !== 1) {
+            riskScore = 100;
+            reasons.push('블랙리스트 또는 신뢰 해제된 기기');
+        } else if (currentDevice.is_compliant === 0) {
+            riskScore = 100;
+            reasons.push('보안 컴플라이언스 위반 기기 (무결성 훼손)');
         }
 
-        // 위치 기반 위험도
+        // 기존 위치 기반 위험도 가산 (차단 확정이 아니더라도 기록용으로 계산)
         if (latitude && longitude && currentDevice?.last_latitude && currentDevice?.last_longitude) {
-            const distance = calculateDistance(
-                currentDevice.last_latitude, currentDevice.last_longitude,
-                latitude, longitude
-            );
-            console.log(`[위치 체크] 이전 위치와의 거리: ${distance.toFixed(0)}km`);
-
+            const distance = calculateDistance(currentDevice.last_latitude, currentDevice.last_longitude, latitude, longitude);
             const [lastLogin] = await pool.query(
-                `SELECT created_at FROM access_logs WHERE user_id = ? AND action_taken IN ('ALLOWED', 'STEP_UP') ORDER BY created_at DESC LIMIT 1`,
+                `SELECT created_at FROM access_logs WHERE user_id = ? AND action_taken IN ('ALLOW', 'STEP_UP') ORDER BY created_at DESC LIMIT 1`,
                 [user.id]
             );
-
             if (lastLogin.length > 0) {
                 const timeDiffHours = (now - new Date(lastLogin[0].created_at)) / 1000 / 3600;
                 if (timeDiffHours > 0) {
                     const speed = distance / timeDiffHours;
-                    console.log(`[이동 속도] ${speed.toFixed(0)}km/h`);
-                    if (speed > 1000) { riskScore += 70; reasons.push(`물리적으로 불가능한 이동 감지 (${speed.toFixed(0)}km/h)`); }
-                    else if (speed > 500) { riskScore += 30; reasons.push(`비정상적으로 빠른 이동 감지 (${speed.toFixed(0)}km/h)`); }
-                    else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동 감지 (${distance.toFixed(0)}km)`); }
-                    else if (distance > 100) { riskScore += 10; reasons.push(`평소와 다른 위치 접속 (${distance.toFixed(0)}km 이동)`); }
+                    if (speed > 1000) { riskScore += 70; reasons.push(`물리적으로 불가능한 이동 감지`); }
+                    else if (speed > 500) { riskScore += 30; reasons.push(`비정상적 빠른 이동`); }
+                    else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동`); }
                 }
-            } else {
-                if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동 감지 (${distance.toFixed(0)}km)`); }
-                else if (distance > 100) { riskScore += 10; reasons.push(`평소와 다른 위치 접속 (${distance.toFixed(0)}km 이동)`); }
-            }
+            } else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동`); }
         }
 
-        if (!latitude || !longitude) { riskScore += 10; reasons.push('위치 정보 수집 불가'); }
-        if (isWifi === false) { riskScore += 5; reasons.push('모바일 데이터 접속'); }
-        
-        if (loginHour >= 2 && loginHour <= 5) { riskScore += 15; reasons.push(`비정상 시간대 접속 (${loginHour}시)`); }
+        if (loginHour >= 2 && loginHour <= 5) { riskScore += 15; reasons.push(`비정상 시간대 접속`); }
 
-        const [loginHistory] = await pool.query(
-            `SELECT login_hour FROM access_logs WHERE user_id = ? AND action_taken = 'ALLOWED' AND login_hour IS NOT NULL ORDER BY created_at DESC LIMIT 10`,
-            [user.id]
-        );
-        if (loginHistory.length >= 3) {
-            const avgHour = Math.round(loginHistory.reduce((sum, log) => sum + log.login_hour, 0) / loginHistory.length);
-            if (Math.abs(loginHour - avgHour) >= 4) {
-                riskScore += 15;
-                reasons.push(`평소와 다른 시간대 접속 (평소: ${avgHour}시, 현재: ${loginHour}시)`);
-            }
-        }
-
-        let action = 'ALLOWED';
-
-        if (riskScore >= 70) {
-            action = 'DENIED';
+        // 정책 판별 수행
+        if (riskScore >= 70 || reasons.some(r => r.includes('비인가') || r.includes('위반') || r.includes('해제'))) {
+            action = 'DENY';
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
-            return res.status(403).json({ message: '차단된 접근입니다.', 위험도점수: riskScore });
+            return res.status(403).json({ message: '보안 정책에 의해 즉시 차단되었습니다.', 위험도점수: riskScore, reasons });
 
-        } else if (riskScore >= 30) {
+        } 
+        // 2. 조건부 허용 (STEP_UP) 조건: BYOD 이거나, 특정 위험 요소 감지 시
+        else if (currentDevice.device_type === 'BYOD' || riskScore >= 30) {
             action = 'STEP_UP';
+            if (currentDevice.device_type === 'BYOD' && riskScore < 30) {
+                reasons.push('BYOD(개인 기기) 접속으로 인한 2차 인증 요구');
+                riskScore = Math.max(riskScore, 30);
+            }
+            
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             const expiry = new Date(Date.now() + 3 * 60000);
             const hashedOtp = await bcrypt.hash(otpCode, 6);
             await pool.query('UPDATE users SET otp_code = ?, otp_expiry = ?, otp_attempts = 0 WHERE id = ?', [hashedOtp, expiry, user.id]);
             
-            // 이메일 발송은 백그라운드에서 처리 (지연 시간 방지)
+            // 이메일 발송
             transporter.sendMail({
                 from: process.env.EMAIL_USER, to: email,
                 subject: '[ZTNA 보안 알림] 2차 인증 번호입니다.',
