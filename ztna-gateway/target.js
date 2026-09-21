@@ -50,6 +50,7 @@ app.use(async (req, res, next) => {
             console.log(`[사내망 기록] ${userEmail} 님이 ${req.method} ${req.originalUrl} 호출`);
         } catch (error) {
             console.error('[사내망 접근 로그 에러]:', error.message);
+            return res.status(401).json({ message: '계정 정보가 유효하지 않습니다. 다시 로그인해 주세요.' });
         }
     } else {
         console.log(`[경고] 식별할 수 없는 접근 시도: ${req.method} ${req.originalUrl}`);

@@ -59,10 +59,10 @@ export default function HomeScreen() {
             }
 
             try {
-                const savedToken = await Storage.getItemAsync('jwt_token');
-                if (savedToken) await testGatewayAccess(savedToken, true);
+                // ZTNA 보안 정책: 앱 구동 시 자동 로그인 금지 및 기존 토큰 초기화
+                await Storage.deleteItemAsync('jwt_token');
             } catch {
-                console.log('[자동 복구 실패] 로그인 화면으로 이동');
+                console.log('기존 토큰 삭제 실패');
             }
         }
         collectContext();

@@ -45,3 +45,7 @@
 - **Context Exclusion:** 시스템 리소스 절약을 위해 `node_modules`, `build`, `.expo`, `dist` 등 빌드 결과물 및 패키지 디렉토리에 대한 검색(`grep_search`)이나 열람(`view_file`)을 시도하지 마십시오.
 - **Planning First:** 단순 버그 수정이 아닌 새로운 비즈니스 로직 추가나 아키텍처 변경이 수반되는 작업은, 코드 작성 전 반드시 구현 계획(Implementation Plan)을 세우고 논리적 결함을 검토하십시오.
 - **Proactive Code Explanation:** 파일 내용을 수정한 후 다음 작업 단계로 넘어가기 전, 항상 '어떤 코드가 수정되었는지(What)' 그리고 '왜 그렇게 수정했는지(Why)'를 사용자에게 먼저 간결하게 설명하십시오.
+- **Tailwind Caching Bypass:** Windows + Vite 환경에서 Tailwind 유틸리티 클래스가 캐싱 버그로 인해 렌더링에 누락되는 고질적 이슈가 존재합니다. 따라서 컴포넌트의 레이아웃(간격, 크기 등)을 미세 조정할 때는 Tailwind 클래스 추가를 피하고, 반드시 **인라인 스타일(`style={{ ... }}`)을 사용하여 하드코딩**하십시오.
+- **Safe File Modifications:** 파일 내용 치환 시 정규식(Regex)을 잘못 사용하면 JSX 괄호 매칭 오류 등으로 치명적인 구문 오류(Syntax Error)를 유발합니다. 복잡한 React 컴포넌트를 수정할 때는 부분 치환 스크립트 작성보다 `write_to_file`을 사용하여 전체 코드를 안전하게 덮어쓰는(Overwrite) 방식을 권장합니다.
+- **No PowerShell for Edits:** PowerShell을 사용한 텍스트 치환 시 UTF-8 인코딩 손실 및 한글 깨짐 현상이 발생하므로, 파일 내용은 반드시 내장된 파일 조작 툴(`replace_file_content`, `write_to_file`)을 통해서만 수행하며 불필요한 시스템 명령어 호출 알림을 발생시키지 마십시오.
+- **Strict Native API Usage:** 파일의 내용을 읽거나(`view_file`) 코드 베이스에서 문자열을 검색(`grep_search`)할 때, 그리고 디렉토리를 탐색(`list_dir`)할 때는 절대로 터미널 셸(PowerShell의 `Get-Content`, `Select-String`, `findstr`, `dir`, `ls` 등)을 사용하지 마십시오. 반드시 제공된 내장 전용 도구를 사용해야 속도와 인코딩 안정성을 보장할 수 있습니다.

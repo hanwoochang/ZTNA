@@ -16,6 +16,24 @@ async function migrate() {
     try {
         console.log('🔄 DB 마이그레이션 시작...');
 
+        // 0. access_logs 테이블 생성 (없으면 생성)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS access_logs (
+                id           INT AUTO_INCREMENT PRIMARY KEY,
+                user_id      INT,
+                device_id    INT,
+                ip_address   VARCHAR(50),
+                risk_score   INT DEFAULT 0,
+                action_taken ENUM('ALLOW', 'STEP_UP', 'DENY') NOT NULL,
+                reason       VARCHAR(500),
+                login_hour   INT,
+                created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+            )
+        `);
+        console.log('✅ access_logs 테이블 생성 완료 (또는 이미 존재)');
+
         // 1. users 테이블 컬럼 추가
         const userCols = ['role', 'department', 'name', 'is_active'];
         for (const col of userCols) {

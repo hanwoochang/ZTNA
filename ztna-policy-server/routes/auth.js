@@ -70,8 +70,19 @@ router.post('/login', loginLimiter, async (req, res) => {
 
         // 1. 즉시 차단 (DENY) 조건
         if (!currentDevice) {
-            riskScore = 100;
-            reasons.push('미등록 비인가 기기 접근 시도');
+            // 신규 미등록 기기: OTP로 최초 등록 후 어드민 승인 대기
+            riskScore += 30;
+            reasons.push('신규 미등록 기기 (OTP 등록 후 어드민 승인 필요)');
+        } else if (currentDevice.is_trusted === 0) {
+            // 어드민 승인 대기 중인 기기 → 대기 응답 반환
+            await pool.query(
+                'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [user.id, currentDevice.id, ipAddress, 30, 'DENY', '어드민 승인 대기 중인 기기', loginHour]
+            );
+            return res.status(202).json({
+                message: '기기 등록 승인 대기 중입니다. 관리자에게 문의하세요.',
+                requiresApproval: true
+            });
         } else if (currentDevice.is_trusted !== 1) {
             riskScore = 100;
             reasons.push('블랙리스트 또는 신뢰 해제된 기기');
@@ -109,9 +120,9 @@ router.post('/login', loginLimiter, async (req, res) => {
 
         } 
         // 2. 조건부 허용 (STEP_UP) 조건: BYOD 이거나, 특정 위험 요소 감지 시
-        else if (currentDevice.device_type === 'BYOD' || riskScore >= 30) {
+        else if ((currentDevice && currentDevice.device_type === 'BYOD') || riskScore >= 30) {
             action = 'STEP_UP';
-            if (currentDevice.device_type === 'BYOD' && riskScore < 30) {
+            if (currentDevice && currentDevice.device_type === 'BYOD' && riskScore < 30) {
                 reasons.push('BYOD(개인 기기) 접속으로 인한 2차 인증 요구');
                 riskScore = Math.max(riskScore, 30);
             }
@@ -184,18 +195,35 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         }
 
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-        const [existing] = await pool.query('SELECT id FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
+        const [existing] = await pool.query('SELECT id, is_trusted FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
+
         if (existing.length === 0) {
-            await pool.query('INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, last_latitude, last_longitude) VALUES (?, ?, ?, 1, ?, ?)',
-                [user.id, deviceId, ipAddress, latitude || null, longitude || null]);
+            // 신규 기기 → is_trusted = 0으로 등록 (어드민 승인 대기)
+            await pool.query(
+                'INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, last_latitude, last_longitude) VALUES (?, ?, ?, 0, ?, ?)',
+                [user.id, deviceId, ipAddress, latitude || null, longitude || null]
+            );
+            return res.status(202).json({
+                message: '기기 등록이 완료되었습니다. 관리자의 승인 후 로그인이 가능합니다.',
+                requiresApproval: true
+            });
+        } else if (existing[0].is_trusted === 0) {
+            // 등록됐지만 어드민 승인 대기 중
+            return res.status(202).json({
+                message: '관리자의 승인을 기다리는 중입니다.',
+                requiresApproval: true
+            });
         } else {
-            await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
-                [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
+            // 승인된 기기 → 위치 정보 업데이트
+            await pool.query(
+                'UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
+                [ipAddress, latitude || null, longitude || null, user.id, deviceId]
+            );
         }
-        
+
         // OTP 인증 완벽 성공 시 IP 기반 Rate Limit 카운트 초기화
         otpLimiter.resetKey(ipAddress);
-        
+
         const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
         res.json({ message: '2차 인증 성공!', token });
     } catch (error) {
@@ -244,6 +272,31 @@ router.post('/verify-bio', async (req, res) => {
         res.json({ message: '생체 인증 성공!', token });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
+        res.status(500).json({ message: '서버 에러', error: error.message });
+    }
+});
+// [API 5] 관리자 전용 로그인 (어드민 대시보드 전용, deviceId 체크 없음)
+router.post('/admin-login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: '이메일과 비밀번호는 필수입니다.' });
+    }
+    try {
+        const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+        const user = users[0];
+        if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+            return res.status(401).json({ message: '이메일이나 비밀번호가 일치하지 않습니다.' });
+        }
+        if (user.role !== 'ADMIN') {
+            return res.status(403).json({ message: '관리자 계정이 아닙니다.' });
+        }
+        const token = jwt.sign(
+            { userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+        res.json({ message: '관리자 로그인 성공', token });
+    } catch (error) {
         res.status(500).json({ message: '서버 에러', error: error.message });
     }
 });

@@ -55,6 +55,15 @@ export const useAuth = () => {
                 previousBatteryLevel: deviceContext?.previousBatteryLevel ?? null
             });
 
+            if (loginResponse.data.requiresApproval) {
+                // is_trusted=0 기기 → 어드민 승인 대기
+                const msg = loginResponse.data.message;
+                if (Platform.OS === 'web') setLoginError(msg);
+                else Alert.alert('승인 대기', msg);
+                setIsLoading(false);
+                return;
+            }
+
             if (loginResponse.data.requiresOtp) {
                 const authMethod = await AsyncStorage.getItem('authMethod');
                 
@@ -174,7 +183,13 @@ export const useAuth = () => {
                 longitude: location?.longitude || null
             });
 
-            if (verifyResponse.data.token) {
+            if (verifyResponse.data.requiresApproval) {
+                // 신규 기기 등록 완료 → 어드민 승인 대기
+                const msg = verifyResponse.data.message;
+                if (Platform.OS === 'web') setOtpError(msg);
+                else Alert.alert('기기 등록 완료', msg);
+                setShowOtpInput(false);
+            } else if (verifyResponse.data.token) {
                 if (Platform.OS !== 'web') Alert.alert('인증 성공!', '출입증이 발급되었습니다.');
                 setShowOtpInput(false);
                 await Storage.setItemAsync('jwt_token', verifyResponse.data.token);

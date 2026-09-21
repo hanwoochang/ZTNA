@@ -145,8 +145,8 @@ const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handle
                                                 <Icon name="user" size={18} color={colors.subText} />
                                             </View>
                                             <View>
-                                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.email.split('@')[0]}</Text>
-                                                <Text style={{ fontSize: 12, color: colors.subText }}>{emp.email}</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
+                                                <Text style={{ fontSize: 12, color: colors.subText }}>{emp.department || '미배정'} · {emp.email}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -730,7 +730,7 @@ export const IntranetScreen = (props: Props) => {
                             <View style={{ padding: 16, backgroundColor: colors.background, borderRadius: 12, marginBottom: 16 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                                     <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                                        <Text style={{ color: colors.onPrimary, fontWeight: 'bold' }}>{props.email[0].toUpperCase()}</Text>
+                                        <Text style={{ color: colors.onPrimary, fontWeight: 'bold' }}>{props.email ? props.email[0].toUpperCase() : '?'}</Text>
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={[styles.infoText, { marginBottom: 0, fontWeight: '600', fontSize: 14 }]} numberOfLines={1}>{props.email}</Text>

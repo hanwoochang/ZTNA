@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+const appPath = 'C:\\ZTNA\\ztna\\ztna-admin-web\\src\\App.tsx';
+const content = `import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
@@ -10,7 +12,7 @@ const api = axios.create({ baseURL: 'http://localhost:3000/api' });
 // 토큰 자동 주입 인터셉터
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('adminToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) config.headers.Authorization = \`Bearer \${token}\`;
   return config;
 });
 
@@ -95,7 +97,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             { path: '/devices', icon: <Server size={20} />, label: '단말 자산' },
           ].map(({ path, icon, label }) => (
             <button key={path} onClick={() => navigate(path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(path) ? 'bg-canvas text-ink border border-hairline font-bold shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent font-semibold'}`}>
+              className={\`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all \${isActive(path) ? 'bg-canvas text-ink border border-hairline font-bold shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent font-semibold'}\`}>
               {icon} <span className="text-base flex-1 text-left">{label}</span>
             </button>
           ))}
@@ -145,10 +147,10 @@ function Overview() {
           { label: '등록된 단말기 수', value: stats.totalDevices, unit: '대', color: 'text-ink', icon: <Server size={28} className="text-ink" /> },
           { label: '금일 비정상 접근 차단', value: stats.deniedToday, unit: '건', color: 'text-semantic-error', icon: <ShieldAlert size={28} className="text-semantic-error" /> },
         ].map((s, i, arr) => (
-          <div key={i} className={`flex-1 flex justify-between items-center ${i < arr.length - 1 ? 'border-r border-hairline' : ''}`} style={{ padding: '24px' }}>
+          <div key={i} className={\`flex-1 flex justify-between items-center \${i < arr.length - 1 ? 'border-r border-hairline' : ''}\`} style={{ padding: '24px' }}>
             <div>
               <h3 className="text-body text-sm font-bold mb-4">{s.label}</h3>
-              <p className={`text-4xl font-light ${s.color}`}>{s.value} <span className="text-base font-medium text-muted">{s.unit}</span></p>
+              <p className={\`text-4xl font-light \${s.color}\`}>{s.value} <span className="text-base font-medium text-muted">{s.unit}</span></p>
             </div>
             <div className="rounded-full border border-hairline flex items-center justify-center bg-canvas" style={{ width: '64px', height: '64px', flexShrink: 0 }}>{s.icon}</div>
           </div>
@@ -183,7 +185,7 @@ function Overview() {
               <Tooltip cursor={{ fill: '#f7f7f4' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e6e5e0' }} />
               <Bar dataKey="totalRisk" radius={[0, 4, 4, 0]} barSize={32} name="누적 위험도">
                 {topRisky.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? '#d43000' : index === 1 ? '#f54e00' : '#ff7a33'} />
+                  <Cell key={\`cell-\${index}\`} fill={index === 0 ? '#d43000' : index === 1 ? '#f54e00' : '#ff7a33'} />
                 ))}
               </Bar>
             </BarChart>
@@ -208,7 +210,7 @@ function Overview() {
               <span className="w-1/4 text-ink font-medium">{log.email || '알 수 없음'}</span>
               <span className="w-1/4 text-body font-mono text-sm">{log.ip_address}</span>
               <span className="w-1/4 flex items-center" style={{ gap: '8px' }}>
-                <span className={`font-bold ${log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'}`}>{log.risk_score}점</span>
+                <span className={\`font-bold \${log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'}\`}>{log.risk_score}점</span>
                 <span className="text-body text-sm truncate">{log.reason}</span>
               </span>
               <span className="w-1/4 text-right font-bold">
@@ -330,7 +332,7 @@ function UsersPage() {
                 <td className="px-8 text-body font-medium" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.department}</td>
                 <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <div className="flex items-center gap-4">
-                    <div className={`w-3.5 h-3.5 rounded-full ${u.is_active ? 'bg-semantic-success' : 'bg-semantic-error'}`}></div>
+                    <div className={\`w-3.5 h-3.5 rounded-full \${u.is_active ? 'bg-semantic-success' : 'bg-semantic-error'}\`}></div>
                     <span className="text-ink font-bold">{u.is_active ? '정상(Active)' : '정지됨'}</span>
                   </div>
                 </td>
@@ -352,7 +354,7 @@ function DevicesPage() {
 
   const handleApprove = async (id: number) => {
     try {
-      await api.patch(`/admin/devices/${id}/approve`);
+      await api.patch(\`/admin/devices/\${id}/approve\`);
       fetchDevices();
     } catch (err: any) {
       alert(err.response?.data?.message || '승인 실패');
@@ -362,7 +364,7 @@ function DevicesPage() {
   const handleRevoke = async (id: number) => {
     if (!confirm('이 기기의 신뢰를 해제하시겠습니까?')) return;
     try {
-      await api.patch(`/admin/devices/${id}/revoke`);
+      await api.patch(\`/admin/devices/\${id}/revoke\`);
       fetchDevices();
     } catch (err: any) {
       alert(err.response?.data?.message || '해제 실패');
@@ -407,7 +409,7 @@ function DevicesPage() {
                 </td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${d.is_compliant ? 'bg-semantic-success' : 'bg-primary'}`}></div>
+                    <div className={\`w-3 h-3 rounded-full \${d.is_compliant ? 'bg-semantic-success' : 'bg-primary'}\`}></div>
                     <span className="text-ink font-bold text-sm">{d.is_compliant ? 'Compliant' : '취약'}</span>
                   </div>
                 </td>
@@ -464,3 +466,7 @@ export default function App() {
     </BrowserRouter>
   );
 }
+\`;
+
+fs.writeFileSync(appPath, content, 'utf8');
+console.log('App.tsx Fully rebuilt successfully with NO syntax errors!');

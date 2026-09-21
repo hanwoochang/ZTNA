@@ -126,5 +126,26 @@ router.get('/logs', async (req, res) => {
         res.status(500).json({ message: '로그 조회 실패', error: error.message });
     }
 });
+// 5. 기기 승인 (is_trusted = 1)
+router.patch('/devices/:id/approve', async (req, res) => {
+    try {
+        const [result] = await pool.query('UPDATE devices SET is_trusted = 1 WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
+        res.json({ message: '기기가 승인되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '기기 승인 실패', error: error.message });
+    }
+});
+
+// 6. 기기 신뢰 해제 (is_trusted = 0)
+router.patch('/devices/:id/revoke', async (req, res) => {
+    try {
+        const [result] = await pool.query('UPDATE devices SET is_trusted = 0 WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
+        res.json({ message: '기기 신뢰가 해제되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '기기 신뢰 해제 실패', error: error.message });
+    }
+});
 
 module.exports = router;
