@@ -229,7 +229,7 @@ const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handle
 };
 
 // 2. 기밀 문서 및 게시판 탭
-const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices, fetchNotices, createNotice, deleteNotice, updateNotice, styles, colors }: any) => {
+const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices, fetchNotices, createNotice, deleteNotice, updateNotice, styles, colors, allowDownload }: any) => {
     useFocusEffect(
         useCallback(() => {
             fetchNotices();
@@ -296,9 +296,9 @@ const DocumentsTab = ({ email, secretData, isLoading, downloadSecretPdf, notices
                 ) : (
                     <Text style={[styles.infoText, { fontWeight: '700', fontSize: 20 }]}>"{secretData}"</Text>
                 )}
-                <TouchableOpacity style={[styles.buttonOutline, { marginTop: 24, marginBottom: 0, flexDirection: 'row', justifyContent: 'center' }]} onPress={downloadSecretPdf} disabled={isLoading}>
-                    <Icon name="download" size={20} color={colors.text} style={{ marginRight: 8 }} />
-                    <Text style={styles.buttonOutlineText}>Download PDF</Text>
+                <TouchableOpacity style={[styles.buttonOutline, { marginTop: 24, marginBottom: 0, flexDirection: 'row', justifyContent: 'center', opacity: allowDownload ? 1 : 0.5 }]} onPress={downloadSecretPdf} disabled={isLoading || !allowDownload}>
+                    <Icon name={allowDownload ? "download" : "lock"} size={20} color={colors.text} style={{ marginRight: 8 }} />
+                    <Text style={styles.buttonOutlineText}>{allowDownload ? 'Download PDF' : 'Download Disabled'}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -654,7 +654,8 @@ const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors 
 
 export const IntranetScreen = (props: Props) => {
     const { styles, colors } = useAppStyles();
-    const intranet = useIntranet();
+    const [allowDownload, setAllowDownload] = useState(true);
+    const intranet = useIntranet(props.handleLogout, setAllowDownload);
     const { isDark } = useTheme();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     
@@ -664,21 +665,39 @@ export const IntranetScreen = (props: Props) => {
     const navigationRef = useNavigationContainerRef();
     const [currentRoute, setCurrentRoute] = useState('Attendance');
 
-    // 사내망(기밀) 진입 시 화면 캡처 원천 차단 (iOS/Android 지원)
+    // 사내망(기밀) 진입 시 화면 캡처 원천 차단 (iOS/Android 지원) 및 설정 로드
     useEffect(() => {
+        const loadSettings = async () => {
+            const storedAllow = await AsyncStorage.getItem('allowDownload');
+            if (storedAllow === 'false') {
+                setAllowDownload(false);
+            } else {
+                setAllowDownload(true);
+            }
+        };
+        loadSettings();
+
+        // 실시간 튕김(Heartbeat) 폴링 - 아무 조작 없이 가만히 있어도 5초마다 상태 검사
+        const heartbeatInterval = setInterval(() => {
+            intranet.fetchTodayAttendance();
+        }, 5000);
+
         if (Platform.OS !== 'web') {
             ScreenCapture.preventScreenCaptureAsync();
             return () => {
+                clearInterval(heartbeatInterval);
                 ScreenCapture.allowScreenCaptureAsync();
             };
         }
+
+        return () => clearInterval(heartbeatInterval);
     }, []);
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
         }).start();
     }, [fadeAnim]);
 
@@ -701,7 +720,9 @@ export const IntranetScreen = (props: Props) => {
                             </View>
 
                             <View style={{ gap: 8 }}>
-                                {['Attendance', 'Documents', 'Schedule', 'Settings'].map(route => {
+                                {['Attendance', 'Documents', 'Schedule', 'Settings']
+                                    .filter(route => allowDownload || route !== 'Schedule')
+                                    .map(route => {
                                     const isActive = currentRoute === route;
                                     let iconName = 'check';
                                     if (route === 'Attendance') iconName = 'clock';
@@ -754,6 +775,14 @@ export const IntranetScreen = (props: Props) => {
 
                 <View style={{ flex: 1, backgroundColor: colors.background }}>
                     <NavigationIndependentTree>
+                        {!allowDownload && (
+                            <View style={{ backgroundColor: '#FFEDD5', padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                <Icon name="alert-triangle" size={16} color="#C2410C" style={{ marginRight: 8 }} />
+                                <Text style={{ color: '#C2410C', fontWeight: 'bold', fontSize: 13 }}>
+                                    BYOD / 외부 접속 모드: 기밀 문서 다운로드가 제한됩니다.
+                                </Text>
+                            </View>
+                        )}
                         <NavigationContainer 
                             ref={navigationRef}
                             onStateChange={(state) => {
@@ -803,11 +832,13 @@ export const IntranetScreen = (props: Props) => {
                                 {() => <AttendanceTab {...props} {...intranet} styles={styles} colors={colors} />}
                             </Tab.Screen>
                             <Tab.Screen name="Documents">
-                                {() => <DocumentsTab {...props} {...intranet} styles={styles} colors={colors} />}
+                                {() => <DocumentsTab {...props} {...intranet} allowDownload={allowDownload} styles={styles} colors={colors} />}
                             </Tab.Screen>
-                            <Tab.Screen name="Schedule">
-                                {() => <ScheduleTab {...props} {...intranet} styles={styles} colors={colors} />}
-                            </Tab.Screen>
+                            {allowDownload && (
+                                <Tab.Screen name="Schedule">
+                                    {() => <ScheduleTab {...props} {...intranet} styles={styles} colors={colors} />}
+                                </Tab.Screen>
+                            )}
                             <Tab.Screen name="Settings">
                                 {() => <SettingsTab {...props} styles={styles} colors={colors} />}
                             </Tab.Screen>

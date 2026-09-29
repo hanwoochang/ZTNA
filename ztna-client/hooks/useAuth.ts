@@ -98,6 +98,7 @@ export const useAuth = () => {
                                 });
                                 if (bioVerifyResponse.data.token) {
                                     await Storage.setItemAsync('jwt_token', bioVerifyResponse.data.token);
+                                    await Storage.setItemAsync('allowDownload', String(bioVerifyResponse.data.allowDownload));
                                     testGatewayAccess(bioVerifyResponse.data.token);
                                     setIsLoading(false);
                                     return; // 성공시 종료
@@ -119,6 +120,7 @@ export const useAuth = () => {
                 setShowOtpInput(true);
             } else {
                 await Storage.setItemAsync('jwt_token', loginResponse.data.token);
+                await Storage.setItemAsync('allowDownload', String(loginResponse.data.allowDownload));
                 testGatewayAccess(loginResponse.data.token);
             }
         } catch (error: any) {
@@ -193,6 +195,7 @@ export const useAuth = () => {
                 if (Platform.OS !== 'web') Alert.alert('인증 성공!', '출입증이 발급되었습니다.');
                 setShowOtpInput(false);
                 await Storage.setItemAsync('jwt_token', verifyResponse.data.token);
+                await Storage.setItemAsync('allowDownload', String(verifyResponse.data.allowDownload));
                 testGatewayAccess(verifyResponse.data.token);
             }
         } catch (error: any) {

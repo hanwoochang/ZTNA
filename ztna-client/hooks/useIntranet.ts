@@ -6,9 +6,31 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { GATEWAY_URL } from '../constants/config';
 
-export const useIntranet = () => {
+export const useIntranet = (onForceLogout?: () => void, syncAllowDownload?: (val: boolean) => void) => {
     const [isLoading, setIsLoading] = useState(false);
     const [attendanceData, setAttendanceData] = useState<{ check_in_time: string | null, check_out_time: string | null }>({ check_in_time: null, check_out_time: null });
+
+    // API 응답 에러를 전역적으로 처리하는 헬퍼
+    const handleApiError = (error: any, defaultMessage: string, silent: boolean = false) => {
+        if (error.response?.status === 401 && error.response?.data?.revoked) {
+            Alert.alert('보안 경고', error.response.data.message || '세션이 강제 종료되었습니다.');
+            if (onForceLogout) onForceLogout();
+            return;
+        }
+        if (!silent) {
+            Alert.alert('통신 실패', error.response?.data?.message || defaultMessage);
+        } else {
+            console.error(defaultMessage, error.response?.data || error.message);
+        }
+    };
+
+    const handleSyncHeader = (response: any) => {
+        if (response?.headers && response.headers['x-allow-download-sync']) {
+            const isAllowed = response.headers['x-allow-download-sync'] === 'true';
+            Storage.setItemAsync('allowDownload', String(isAllowed));
+            if (syncAllowDownload) syncAllowDownload(isAllowed);
+        }
+    };
 
     const getAuthHeader = async () => {
         const token = await Storage.getItemAsync('jwt_token');
@@ -19,12 +41,13 @@ export const useIntranet = () => {
         try {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/attendance/today`, { headers });
+            handleSyncHeader(response);
             setAttendanceData({
                 check_in_time: response.data.check_in_time,
                 check_out_time: response.data.check_out_time
             });
-        } catch (error) {
-            console.error('[근태 조회 실패]', error);
+        } catch (error: any) {
+            handleApiError(error, '[근태 조회 실패]', true);
         }
     };
 
@@ -37,7 +60,7 @@ export const useIntranet = () => {
             // 처리 후 화면 갱신
             await fetchTodayAttendance();
         } catch (error: any) {
-            Alert.alert('통신 실패', error.response?.data?.message || '사내망 접근에 실패했습니다.');
+            handleApiError(error, '사내망 접근에 실패했습니다.');
         } finally {
             setIsLoading(false);
         }
@@ -53,7 +76,10 @@ export const useIntranet = () => {
                 const response = await fetch(`${GATEWAY_URL}/private/api/documents/secret.pdf`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('문서 다운로드 권한이 없습니다.');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || '문서 다운로드 권한이 없습니다.');
+                }
                 const blob = await response.blob();
                 const blobUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -83,7 +109,7 @@ export const useIntranet = () => {
                 }
             }
         } catch (error: any) {
-            Alert.alert('다운로드 실패', `이유: ${error.message}`);
+            handleApiError(error, error.message);
         } finally {
             setIsLoading(false);
         }
@@ -95,9 +121,10 @@ export const useIntranet = () => {
         try {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/notices`, { headers });
+            handleSyncHeader(response);
             setNotices(response.data);
-        } catch (error) {
-            console.error('[게시글 목록 조회 실패]', error);
+        } catch (error: any) {
+            handleApiError(error, '[게시글 목록 조회 실패]', true);
         }
     };
 
@@ -110,7 +137,7 @@ export const useIntranet = () => {
             await fetchNotices();
             return true;
         } catch (error: any) {
-            Alert.alert('등록 실패', error.response?.data?.message || '게시글 등록에 실패했습니다.');
+            handleApiError(error, '게시글 등록에 실패했습니다.');
             return false;
         } finally {
             setIsLoading(false);
@@ -126,7 +153,7 @@ export const useIntranet = () => {
             await fetchNotices();
             return true;
         } catch (error: any) {
-            Alert.alert('삭제 실패', error.response?.data?.message || '게시글 삭제에 실패했습니다.');
+            handleApiError(error, '게시글 삭제에 실패했습니다.');
             return false;
         } finally {
             setIsLoading(false);
@@ -142,7 +169,7 @@ export const useIntranet = () => {
             await fetchNotices();
             return true;
         } catch (error: any) {
-            Alert.alert('수정 실패', error.response?.data?.message || '게시글 수정 권한이 없습니다.');
+            handleApiError(error, '게시글 수정 권한이 없습니다.');
             return false;
         } finally {
             setIsLoading(false);
@@ -157,7 +184,7 @@ export const useIntranet = () => {
             const response = await axios.get(`${GATEWAY_URL}/private/api/events`, { headers });
             setEvents(response.data);
         } catch (error: any) {
-            console.error('fetchEvents Error:', error.response?.data || error.message);
+            handleApiError(error, '[일정 목록 조회 실패]', true);
         }
     };
 
@@ -192,8 +219,8 @@ export const useIntranet = () => {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/employees`, { headers });
             setEmployees(response.data);
-        } catch (error) {
-            console.error('[임직원 목록 조회 실패]', error);
+        } catch (error: any) {
+            handleApiError(error, '[임직원 목록 조회 실패]', true);
         }
     };
 

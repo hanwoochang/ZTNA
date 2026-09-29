@@ -156,8 +156,16 @@ router.post('/login', loginLimiter, async (req, res) => {
             // 로그인 완벽 성공 시 IP 기반 Rate Limit 카운트 초기화
             loginLimiter.resetKey(ipAddress);
 
-            const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
-            return res.json({ message: 'ZTNA 출입증 발급 성공', token });
+            const token = jwt.sign({ 
+                userId: user.id, 
+                email: user.email, 
+                role: user.role, 
+                department: user.department, 
+                jti: randomUUID(),
+                deviceId: currentDevice?.device_identifier || deviceId,
+                allowDownload: true 
+            }, process.env.JWT_SECRET, { expiresIn: '15m' });
+            return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload: true });
         }
     } catch (error) {
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -195,7 +203,7 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         }
 
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-        const [existing] = await pool.query('SELECT id, is_trusted FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
+        const [existing] = await pool.query('SELECT id, is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
 
         if (existing.length === 0) {
             // 신규 기기 → is_trusted = 0으로 등록 (어드민 승인 대기)
@@ -224,8 +232,21 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         // OTP 인증 완벽 성공 시 IP 기반 Rate Limit 카운트 초기화
         otpLimiter.resetKey(ipAddress);
 
-        const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
-        res.json({ message: '2차 인증 성공!', token });
+        // ZTNA Step-Up(2차 인증) 통과 시, BYOD 기기 여부에 따라 다운로드 권한(allowDownload) 결정
+        const isBYOD = existing[0]?.device_type === 'BYOD';
+        const allowDownload = !isBYOD;
+
+        const token = jwt.sign({ 
+            userId: user.id, 
+            email: user.email, 
+            role: user.role, 
+            department: user.department, 
+            jti: randomUUID(),
+            deviceId,
+            allowDownload 
+        }, process.env.JWT_SECRET, { expiresIn: '15m' });
+        
+        res.json({ message: '2차 인증 성공!', token, allowDownload });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -255,7 +276,7 @@ router.post('/verify-bio', async (req, res) => {
         // [신뢰 기기 검증] 이 deviceId가 서버에 등록된 신뢰 기기인지 확인
         // → 미등록 기기는 생체인증 우회 불가 (ZTNA 핵심 원칙 적용)
         const [devices] = await pool.query(
-            'SELECT is_trusted FROM devices WHERE user_id = ? AND device_identifier = ?',
+            'SELECT is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
             [user.id, deviceId]
         );
         if (!devices[0] || devices[0].is_trusted !== 1) {
@@ -268,8 +289,20 @@ router.post('/verify-bio', async (req, res) => {
         await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
             [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
         
-        const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() }, process.env.JWT_SECRET, { expiresIn: '15m' });
-        res.json({ message: '생체 인증 성공!', token });
+        const isBYOD = devices[0]?.device_type === 'BYOD';
+        const allowDownload = !isBYOD;
+
+        const token = jwt.sign({ 
+            userId: user.id, 
+            email: user.email, 
+            role: user.role, 
+            department: user.department, 
+            jti: randomUUID(),
+            deviceId,
+            allowDownload 
+        }, process.env.JWT_SECRET, { expiresIn: '15m' });
+        
+        res.json({ message: '생체 인증 성공!', token, allowDownload });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });

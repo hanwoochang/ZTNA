@@ -34,7 +34,7 @@ const verifyToken = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 블랙리스트 확인 (로그아웃된 토큰인지 체크)
+        // 1. 블랙리스트 확인 (로그아웃된 토큰인지 체크)
         const [blacklisted] = await pool.query(
             'SELECT id FROM token_blacklist WHERE jti = ?', 
             [decoded.jti]
@@ -43,6 +43,30 @@ const verifyToken = async (req, res, next) => {
         if (blacklisted.length > 0) {
             console.log(`[차단] 폐기된 출입증으로 접근 시도! (${decoded.email})`);
             return res.status(401).json({ message: '접근 금지: 이미 폐기된 출입증입니다!' });
+        }
+
+        // 2. 실시간 강제 차단(Revoke) 검사 및 권한 갱신 (Heartbeat / API Call)
+        if (decoded.deviceId) {
+            const [devices] = await pool.query(
+                'SELECT is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+                [decoded.userId, decoded.deviceId]
+            );
+            
+            if (!devices[0] || devices[0].is_trusted === 0) {
+                console.log(`[강제 튕김] 관리자에 의해 신뢰가 해제된 기기 접근 차단! (${decoded.email})`);
+                // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
+                return res.status(401).json({ 
+                    message: '관리자에 의해 기기 신뢰가 강제 해제되었습니다. 세션이 차단됩니다.', 
+                    revoked: true 
+                });
+            }
+
+            // 실시간 소유 형태(BYOD/CORPORATE) 변경 감지 및 토큰 권한 오버라이드
+            if (devices[0].device_type === 'BYOD') {
+                decoded.allowDownload = false;
+            } else if (devices[0].device_type === 'CORPORATE') {
+                decoded.allowDownload = true;
+            }
         }
 
         req.user = decoded;
@@ -59,11 +83,17 @@ app.use('/private', verifyToken, createProxyMiddleware({
     changeOrigin: true,
     pathRewrite: { '^/private': '' },
     on: {
+        proxyRes: (proxyRes, req, res) => {
+            if (req.user && req.user.allowDownload !== undefined) {
+                proxyRes.headers['x-allow-download-sync'] = req.user.allowDownload ? 'true' : 'false';
+            }
+        },
         proxyReq: (proxyReq, req, res) => {
             // verifyToken 미들웨어에서 해석한 사용자 정보를 헤더에 주입하여 Target Server로 전달
             if (req.user) {
                 proxyReq.setHeader('x-user-id', req.user.userId);
                 proxyReq.setHeader('x-user-email', req.user.email);
+                proxyReq.setHeader('x-allow-download', req.user.allowDownload ? 'true' : 'false');
             }
         }
     }

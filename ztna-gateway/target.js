@@ -70,6 +70,12 @@ app.get('/', (req, res) => {
 app.get('/api/documents/secret.pdf', (req, res) => {
     try {
         const userEmail = req.headers['x-user-email'] || 'Unknown User';
+        const allowDownload = req.headers['x-allow-download'];
+
+        if (allowDownload === 'false') {
+            console.log(`[차단] ${userEmail} 님이 조건부 허용(BYOD) 상태로 기밀문서 다운로드 시도`);
+            return res.status(403).json({ message: '조건부 허용 모드(BYOD 등)에서는 기밀문서 다운로드가 제한됩니다.' });
+        }
         
         // IP 추적
         let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
