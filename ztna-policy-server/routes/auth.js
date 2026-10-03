@@ -67,14 +67,13 @@ router.post('/login', loginLimiter, async (req, res) => {
 
         // --- ZTNA 정책 엔진 (PDP) 3단계 엄격 판별 로직 (NIST SP 800-207 기반) ---
         let action = 'ALLOW';
+        let forceDeny = false;
 
-        // 1. 즉시 차단 (DENY) 조건
-        if (!currentDevice) {
-            // 신규 미등록 기기: OTP로 최초 등록 후 어드민 승인 대기
-            riskScore += 30;
-            reasons.push('신규 미등록 기기 (OTP 등록 후 어드민 승인 필요)');
-        } else if (currentDevice.is_trusted === 0) {
-            // 어드민 승인 대기 중인 기기 → 대기 응답 반환
+        // 1. 기기 등록 상태(status) 기반 사전 판별
+        //    - 미등록 기기: 위험도 엔진에서 +30 (STEP_UP → OTP 등록 유도)
+        //    - PENDING : 어드민 승인 대기 → 대기 응답
+        //    - BLOCKED : 어드민이 차단/해제한 기기 → 즉시 차단
+        if (currentDevice && currentDevice.status === 'PENDING') {
             await pool.query(
                 'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice.id, ipAddress, 30, 'DENY', '어드민 승인 대기 중인 기기', loginHour]
@@ -83,15 +82,14 @@ router.post('/login', loginLimiter, async (req, res) => {
                 message: '기기 등록 승인 대기 중입니다. 관리자에게 문의하세요.',
                 requiresApproval: true
             });
-        } else if (currentDevice.is_trusted !== 1) {
+        }
+        if (currentDevice && currentDevice.status !== 'APPROVED') {
+            forceDeny = true;
             riskScore = 100;
-            reasons.push('블랙리스트 또는 신뢰 해제된 기기');
-        } else if (currentDevice.is_compliant === 0) {
-            riskScore = 100;
-            reasons.push('보안 컴플라이언스 위반 기기 (무결성 훼손)');
+            reasons.push('관리자에 의해 차단(신뢰 해제)된 기기');
         }
 
-        // 2~4. 위험도 엔진(CARTA)을 통한 동적 점수 산출
+        // 2~4. 위험도 엔진(CARTA)을 통한 동적 점수 산출 (기기 신뢰도 점수 포함)
         let lastLoginData = null;
         if (currentDevice) {
             const [lastLogin] = await pool.query(
@@ -104,8 +102,10 @@ router.post('/login', loginLimiter, async (req, res) => {
         const riskEvaluation = evaluateRisk(currentDevice, ipAddress, latitude, longitude, lastLoginData, loginHour);
         riskScore += riskEvaluation.riskScore; // 누적
         reasons = reasons.concat(riskEvaluation.reasons);
+        forceDeny = forceDeny || riskEvaluation.forceDeny;
+
         // 정책 판별 수행
-        if (riskScore >= 70 || reasons.some(r => r.includes('비인가') || r.includes('위반') || r.includes('해제'))) {
+        if (forceDeny || riskScore >= 70) {
             action = 'DENY';
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
@@ -135,7 +135,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
             
-            const isTrustedDevice = !!(currentDevice && currentDevice.is_trusted === 1);
+            const isTrustedDevice = !!(currentDevice && currentDevice.status === 'APPROVED');
             return res.status(202).json({ message: 'OTP 인증이 필요합니다.', requiresOtp: true, isTrustedDevice, 위험도점수: riskScore });
 
         } else {
@@ -196,24 +196,27 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
         }
 
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
-        const [existing] = await pool.query('SELECT id, is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
+        const [existing] = await pool.query('SELECT id, status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
 
         if (existing.length === 0) {
-            // 신규 기기 → is_trusted = 0으로 등록 (어드민 승인 대기)
+            // 신규 기기 → PENDING으로 등록 (어드민 승인 대기)
             await pool.query(
-                'INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, last_latitude, last_longitude) VALUES (?, ?, ?, 0, ?, ?)',
+                "INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, status, last_latitude, last_longitude) VALUES (?, ?, ?, 0, 'PENDING', ?, ?)",
                 [user.id, deviceId, ipAddress, latitude || null, longitude || null]
             );
             return res.status(202).json({
                 message: '기기 등록이 완료되었습니다. 관리자의 승인 후 로그인이 가능합니다.',
                 requiresApproval: true
             });
-        } else if (existing[0].is_trusted === 0) {
+        } else if (existing[0].status === 'PENDING') {
             // 등록됐지만 어드민 승인 대기 중
             return res.status(202).json({
                 message: '관리자의 승인을 기다리는 중입니다.',
                 requiresApproval: true
             });
+        } else if (existing[0].status !== 'APPROVED') {
+            // 어드민이 차단(해제)한 기기 → OTP를 통과해도 출입 불가
+            return res.status(403).json({ message: '관리자에 의해 차단(신뢰 해제)된 기기입니다.' });
         } else {
             // 승인된 기기 → 위치 정보 업데이트
             await pool.query(
@@ -269,10 +272,10 @@ router.post('/verify-bio', async (req, res) => {
         // [신뢰 기기 검증] 이 deviceId가 서버에 등록된 신뢰 기기인지 확인
         // → 미등록 기기는 생체인증 우회 불가 (ZTNA 핵심 원칙 적용)
         const [devices] = await pool.query(
-            'SELECT is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+            'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
             [user.id, deviceId]
         );
-        if (!devices[0] || devices[0].is_trusted !== 1) {
+        if (!devices[0] || devices[0].status !== 'APPROVED') {
             return res.status(403).json({ message: '미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
         }
 
@@ -302,20 +305,42 @@ router.post('/verify-bio', async (req, res) => {
     }
 });
 // [API 5] 관리자 전용 로그인 (어드민 대시보드 전용, deviceId 체크 없음)
-router.post('/admin-login', async (req, res) => {
+// 무차별 대입 방지(loginLimiter) + 모든 시도를 access_logs에 감사 기록
+router.post('/admin-login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
         return res.status(400).json({ message: '이메일과 비밀번호는 필수입니다.' });
     }
+
+    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+    if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
+    if (ipAddress === '::1') ipAddress = '127.0.0.1';
+    const loginHour = new Date().getHours();
+
+    const writeLog = (userId, action, reason) => pool.query(
+        'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, NULL, ?, ?, ?, ?, ?)',
+        [userId, ipAddress, action === 'DENY' ? 50 : 0, action, reason, loginHour]
+    ).catch(err => console.error('[관리자 로그인 감사 로그 실패]:', err.message));
+
     try {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+            await writeLog(user?.id || null, 'DENY', '[관리자 콘솔] 비밀번호 불일치');
             return res.status(401).json({ message: '이메일이나 비밀번호가 일치하지 않습니다.' });
         }
         if (user.role !== 'ADMIN') {
+            await writeLog(user.id, 'DENY', '[관리자 콘솔] 관리자 권한 없는 계정의 접근 시도');
             return res.status(403).json({ message: '관리자 계정이 아닙니다.' });
         }
+        if (user.is_active === 0) {
+            await writeLog(user.id, 'DENY', '[관리자 콘솔] 정지된 계정');
+            return res.status(403).json({ message: '정지된 계정입니다.' });
+        }
+
+        await writeLog(user.id, 'ALLOW', '[관리자 콘솔] 로그인 성공');
+        loginLimiter.resetKey(ipAddress);
+
         const token = jwt.sign(
             { userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() },
             process.env.JWT_SECRET,

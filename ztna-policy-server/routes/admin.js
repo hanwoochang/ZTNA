@@ -101,10 +101,10 @@ router.post('/users', async (req, res) => {
 router.get('/devices', async (req, res) => {
     try {
         const [devices] = await pool.query(`
-            SELECT d.id, d.device_identifier, d.device_type, d.is_compliant, d.is_trusted, d.last_ip_address, d.last_accessed_at, u.email, u.name 
+            SELECT d.id, d.device_identifier, d.device_type, d.is_compliant, d.is_trusted, d.status, d.last_ip_address, d.last_accessed_at, u.email, u.name 
             FROM devices d 
             LEFT JOIN users u ON d.user_id = u.id 
-            ORDER BY d.last_accessed_at DESC
+            ORDER BY FIELD(d.status, 'PENDING', 'APPROVED', 'BLOCKED'), d.last_accessed_at DESC
         `);
         res.json(devices);
     } catch (error) {
@@ -127,10 +127,10 @@ router.get('/logs', async (req, res) => {
     }
 });
 
-// 5. 기기 수동 승인 (관리자 강제 신뢰)
+// 5. 기기 승인 (PENDING/BLOCKED → APPROVED)
 router.patch('/devices/:id/approve', async (req, res) => {
     try {
-        const [result] = await pool.query('UPDATE devices SET is_trusted = 1 WHERE id = ?', [req.params.id]);
+        const [result] = await pool.query("UPDATE devices SET status = 'APPROVED', is_trusted = 1 WHERE id = ?", [req.params.id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기가 성공적으로 인가되었습니다.' });
     } catch (error) {
@@ -138,12 +138,12 @@ router.patch('/devices/:id/approve', async (req, res) => {
     }
 });
 
-// 6. 기기 신뢰 해제 (강제 차단/revoke)
+// 6. 기기 차단/신뢰 해제 (→ BLOCKED)
 router.patch('/devices/:id/revoke', async (req, res) => {
     try {
-        const [result] = await pool.query('UPDATE devices SET is_trusted = 0 WHERE id = ?', [req.params.id]);
+        const [result] = await pool.query("UPDATE devices SET status = 'BLOCKED', is_trusted = 0 WHERE id = ?", [req.params.id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
-        res.json({ message: '기기 신뢰가 해제되었습니다.' });
+        res.json({ message: '기기가 차단(신뢰 해제)되었습니다.' });
     } catch (error) {
         res.status(500).json({ message: '기기 해제 실패', error: error.message });
     }
@@ -161,6 +161,17 @@ router.patch('/devices/:id/type', async (req, res) => {
         res.json({ message: '기기 소유 형태가 변경되었습니다.' });
     } catch (error) {
         res.status(500).json({ message: '기기 소유 형태 변경 실패', error: error.message });
+    }
+});
+
+// 8. 기기 완전 삭제 (DELETE)
+router.delete('/devices/:id', async (req, res) => {
+    try {
+        const [result] = await pool.query('DELETE FROM devices WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
+        res.json({ message: '기기가 영구적으로 삭제되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '기기 삭제 실패', error: error.message });
     }
 });
 

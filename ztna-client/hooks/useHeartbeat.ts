@@ -31,6 +31,9 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                     if (response.data.token) {
                         await Storage.setItemAsync('jwt_token', response.data.token);
                     }
+                    if (typeof response.data.allowDownload === 'boolean') {
+                        await Storage.setItemAsync('allowDownload', String(response.data.allowDownload));
+                    }
                     if (response.data.action === 'TERMINATE') {
                         handleLogout(true);
                     }

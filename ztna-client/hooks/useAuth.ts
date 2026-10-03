@@ -57,7 +57,7 @@ export const useAuth = () => {
             });
 
             if (loginResponse.data.requiresApproval) {
-                // is_trusted=0 기기 → 어드민 승인 대기
+                // status=PENDING 기기 → 어드민 승인 대기
                 const msg = loginResponse.data.message;
                 if (Platform.OS === 'web') setLoginError(msg);
                 else Alert.alert('접근 대기', msg);
@@ -245,6 +245,7 @@ export const useAuth = () => {
             console.log('토큰 폐기 요청 실패:', error);
         } finally {
             await Storage.deleteItemAsync('jwt_token');
+            await Storage.deleteItemAsync('allowDownload');
             setIsLoggedIn(false);
             setShowOtpInput(false);
             setSecretData('');

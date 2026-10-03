@@ -33,25 +33,44 @@ router.post('/verify-context', async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // 토큰에 박힌 기기와 요청 기기가 다르면 토큰 탈취/재사용으로 간주
+        if (decoded.deviceId && decoded.deviceId !== deviceId) {
+            await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
+                [decoded.jti, new Date(decoded.exp * 1000)]);
+            return res.status(403).json({ action: 'TERMINATE', message: '기기 정보 불일치! 연결이 강제 종료됩니다.' });
+        }
+
         const [devices] = await pool.query(
-            'SELECT is_trusted, last_ip_address FROM devices WHERE user_id = ? AND device_identifier = ?',
+            'SELECT status, device_type, last_ip_address FROM devices WHERE user_id = ? AND device_identifier = ?',
             [decoded.userId, deviceId]
         );
         const device = devices[0];
 
-        if (!device || device.is_trusted !== 1 || device.last_ip_address !== currentIp) {
+        if (!device || device.status !== 'APPROVED' || device.last_ip_address !== currentIp) {
             console.log(`[강제 추방] ${decoded.email} - 보안 컨텍스트 불일치 (신뢰 해제 또는 IP 변경)`);
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
             return res.status(403).json({ action: 'TERMINATE', message: '보안 정책 위반 감지! 연결이 강제 종료됩니다.' });
         }
 
+        // 최신 기기 소유 형태 기준으로 다운로드 권한 재산정
+        const allowDownload = device.device_type !== 'BYOD';
+
         const newToken = jwt.sign(
-            { userId: decoded.userId, email: decoded.email, role: decoded.role, department: decoded.department, jti: randomUUID() },
+            {
+                userId: decoded.userId,
+                email: decoded.email,
+                role: decoded.role,
+                department: decoded.department,
+                jti: randomUUID(),
+                deviceId,
+                allowDownload
+            },
             process.env.JWT_SECRET,
             { expiresIn: '15m' }
         );
-        res.json({ status: 'SAFE', token: newToken });
+        res.json({ status: 'SAFE', token: newToken, allowDownload });
     } catch (error) {
         res.status(401).json({ action: 'TERMINATE', message: '세션이 만료되었습니다.' });
     }

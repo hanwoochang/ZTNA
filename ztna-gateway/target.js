@@ -305,12 +305,13 @@ app.post('/api/events', async (req, res) => {
 app.delete('/api/events/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     
     try {
         const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
         
-        if (rows[0].author !== currentUser && currentUser !== '관리자') {
+        if (rows[0].author !== currentUser && !isAdminRole) {
             return res.status(403).json({ message: '본인이 등록한 일정만 삭제할 수 있습니다.' });
         }
 
@@ -357,13 +358,14 @@ app.post('/api/notices', async (req, res) => {
 app.delete('/api/notices/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
 
     try {
         const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
-        if (notice.author !== currentUser && currentUser !== '보안팀' && currentUser !== '인사팀') {
+        if (notice.author !== currentUser && !isAdminRole) {
             return res.status(403).json({ message: '본인이 작성한 게시글만 삭제할 수 있습니다.' });
         }
 
@@ -378,13 +380,14 @@ app.put('/api/notices/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const { title, content } = req.body;
     const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     
     try {
         const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
-        if (notice.author !== currentUser && currentUser !== '보안팀' && currentUser !== '인사팀') {
+        if (notice.author !== currentUser && !isAdminRole) {
             return res.status(403).json({ message: '수정 권한이 없습니다 (작성자 본인만 가능).' });
         }
 

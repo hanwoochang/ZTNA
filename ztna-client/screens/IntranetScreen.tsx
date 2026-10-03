@@ -11,6 +11,7 @@ import { useIntranet } from '../hooks/useIntranet';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { useTheme } from '../hooks/useTheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Storage from '../utils/storage';
 import { NavigationContainer, NavigationIndependentTree, useNavigationContainerRef } from '@react-navigation/native';
 import * as ScreenCapture from 'expo-screen-capture';
 
@@ -668,7 +669,7 @@ export const IntranetScreen = (props: Props) => {
     // 사내망(기밀) 진입 시 화면 캡처 원천 차단 (iOS/Android 지원) 및 설정 로드
     useEffect(() => {
         const loadSettings = async () => {
-            const storedAllow = await AsyncStorage.getItem('allowDownload');
+            const storedAllow = await Storage.getItemAsync('allowDownload');
             if (storedAllow === 'false') {
                 setAllowDownload(false);
             } else {
@@ -677,10 +678,10 @@ export const IntranetScreen = (props: Props) => {
         };
         loadSettings();
 
-        // 실시간 튕김(Heartbeat) 폴링 - 아무 조작 없이 가만히 있어도 5초마다 상태 검사
+        // 실시간 튕김 폴링 - Gateway 경유 호출로 기기 차단/권한 변경을 감지 (30초 주기, 접근 로그 폭증 방지)
         const heartbeatInterval = setInterval(() => {
             intranet.fetchTodayAttendance();
-        }, 5000);
+        }, 30000);
 
         if (Platform.OS !== 'web') {
             ScreenCapture.preventScreenCaptureAsync();
@@ -760,7 +761,7 @@ export const IntranetScreen = (props: Props) => {
                             </View>
 
                             <Pressable 
-                                onPress={props.handleLogout}
+                                onPress={() => props.handleLogout()}
                                 style={({ hovered }) => [
                                     { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
                                     hovered ? { backgroundColor: colors.background } : {}

@@ -48,11 +48,11 @@ const verifyToken = async (req, res, next) => {
         // 2. 실시간 강제 차단(Revoke) 검사 및 권한 갱신 (Heartbeat / API Call)
         if (decoded.deviceId) {
             const [devices] = await pool.query(
-                'SELECT is_trusted, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+                'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
                 [decoded.userId, decoded.deviceId]
             );
             
-            if (!devices[0] || devices[0].is_trusted !== 1) {
+            if (!devices[0] || devices[0].status !== 'APPROVED') {
                 console.log(`[강제 튕김] 관리자에 의해 신뢰 해제된 기기 접근 차단! (${decoded.email})`);
                 // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
                 return res.status(401).json({ 
@@ -93,6 +93,8 @@ app.use('/private', verifyToken, createProxyMiddleware({
             if (req.user) {
                 proxyReq.setHeader('x-user-id', req.user.userId);
                 proxyReq.setHeader('x-user-email', req.user.email);
+                // 클라이언트 위조 방지를 위해 값이 없어도 항상 덮어씀
+                proxyReq.setHeader('x-user-role', req.user.role || 'NONE');
                 proxyReq.setHeader('x-allow-download', req.user.allowDownload ? 'true' : 'false');
             }
         }

@@ -1,9 +1,11 @@
 // 위험도 산출 엔진 (CARTA)
+// ※ 기기 신뢰도(미등록/컴플라이언스) 점수는 이 엔진에서만 계산합니다. 라우터에서 중복 가산 금지.
 const { calculateDistance } = require('../utils/distance');
 
 const evaluateRisk = (currentDevice, ipAddress, latitude, longitude, lastLoginData, loginHour) => {
     let riskScore = 0;
     let reasons = [];
+    let forceDeny = false; // 점수와 무관하게 즉시 차단해야 하는 경우
     const now = new Date();
 
     // 1. 기기 신뢰도 무결성 가산
@@ -13,6 +15,7 @@ const evaluateRisk = (currentDevice, ipAddress, latitude, longitude, lastLoginDa
         reasons.push('신규 미등록 기기 (OTP 등록 후 어드민 승인 필요)');
     } else if (currentDevice.is_compliant === 0) {
         riskScore = 100;
+        forceDeny = true;
         reasons.push('보안 컴플라이언스 위반 기기 (무결성 훼손)');
     }
 
@@ -51,7 +54,7 @@ const evaluateRisk = (currentDevice, ipAddress, latitude, longitude, lastLoginDa
         riskScore += 15; reasons.push(`평소와 다른 시간대 접속`);
     }
 
-    return { riskScore, reasons };
+    return { riskScore, reasons, forceDeny };
 };
 
 module.exports = { calculateDistance, evaluateRisk };

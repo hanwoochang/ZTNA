@@ -1,29 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Map } from 'lucide-react';
+import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix for default marker icon in leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-// Custom red icon for revoked/blocked attempts
-const redIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
 
 // API 설정 (백엔드 정책 서버)
 const api = axios.create({ baseURL: 'http://localhost:3000/api' });
@@ -91,7 +70,6 @@ function LoginPage() {
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '대시보드',
-  '/map': '실시간 접속 위치',
   '/users': '임직원 통제',
   '/devices': '단말 자산',
 };
@@ -384,12 +362,22 @@ function DevicesPage() {
   };
 
   const handleRevoke = async (id: number) => {
-    if (!confirm('이 기기의 신뢰를 해제하시겠습니까?')) return;
+    if (!confirm('이 기기를 차단하시겠습니까?\n접속 중인 세션도 즉시 끊기고, 재승인 전까지 로그인할 수 없습니다.')) return;
     try {
       await api.patch(`/admin/devices/${id}/revoke`);
       fetchDevices();
     } catch (err: any) {
       alert(err.response?.data?.message || '해제 실패');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('정말 이 기기를 영구적으로 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+    try {
+      await api.delete(`/admin/devices/${id}`);
+      fetchDevices();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '삭제 실패');
     }
   };
 
@@ -453,29 +441,38 @@ function DevicesPage() {
                   </div>
                 </td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
-                  {d.is_trusted === 1 ? (
+                  {d.status === 'APPROVED' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-semantic-success/10 text-semantic-success">
                       ● 인가됨
                     </span>
+                  ) : d.status === 'BLOCKED' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-semantic-error/10 text-semantic-error">
+                      ✕ 차단됨
+                    </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                      ◌ 인증 대기
+                      ◌ 승인 대기
                     </span>
                   )}
                 </td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
                   <div className="flex items-center gap-2">
-                    {d.is_trusted !== 1 ? (
+                    {d.status !== 'APPROVED' && (
                       <button onClick={() => handleApprove(d.id)}
                         className="px-3 py-1.5 bg-semantic-success text-white text-xs font-bold rounded-md hover:opacity-80 transition-all">
-                        인증
-                      </button>
-                    ) : (
-                      <button onClick={() => handleRevoke(d.id)}
-                        className="px-3 py-1.5 bg-semantic-error/10 text-semantic-error text-xs font-bold rounded-md hover:bg-semantic-error/20 transition-all border border-semantic-error/20">
-                        해제
+                        {d.status === 'BLOCKED' ? '재승인' : '승인'}
                       </button>
                     )}
+                    {d.status !== 'BLOCKED' && (
+                      <button onClick={() => handleRevoke(d.id)}
+                        className="px-3 py-1.5 bg-semantic-error/10 text-semantic-error text-xs font-bold rounded-md hover:bg-semantic-error/20 transition-all border border-semantic-error/20">
+                        차단
+                      </button>
+                    )}
+                    <button onClick={() => handleDelete(d.id)}
+                      className="px-3 py-1.5 bg-muted/10 text-muted text-xs font-bold rounded-md hover:bg-muted/20 hover:text-ink transition-all border border-hairline">
+                      삭제
+                    </button>
                   </div>
                 </td>
               </tr>

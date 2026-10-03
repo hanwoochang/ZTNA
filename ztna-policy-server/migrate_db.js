@@ -73,6 +73,14 @@ async function migrate() {
             }
         }
 
+        // 2-1. status 백필: status를 기기 상태의 단일 기준(Source of Truth)으로 사용
+        //   - 기존 승인 기기(is_trusted=1) → APPROVED
+        //   - 그 외(is_trusted=0)는 승인 대기/차단 구분이 불가하므로 기존 status 유지
+        const [backfill] = await pool.query(
+            "UPDATE devices SET status = 'APPROVED' WHERE is_trusted = 1 AND (status IS NULL OR status <> 'APPROVED')"
+        );
+        console.log(`✅ devices.status 백필 완료 (APPROVED 반영: ${backfill.affectedRows}건)`);
+
         // 3. 테스트 계정(Seed) 삽입
         const passwordHash = await bcrypt.hash('1234', 10);
         const testUsers = [
