@@ -1,8 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
+import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Map } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Custom red icon for revoked/blocked attempts
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 // API 설정 (백엔드 정책 서버)
 const api = axios.create({ baseURL: 'http://localhost:3000/api' });
@@ -70,6 +91,7 @@ function LoginPage() {
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '대시보드',
+  '/map': '실시간 접속 위치',
   '/users': '임직원 통제',
   '/devices': '단말 자산',
 };
@@ -83,27 +105,27 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-canvas font-sans" style={{ display: 'flex', height: '100vh', width: '100vw', padding: '32px', gap: '40px', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Sidebar */}
-      <aside className="bg-card rounded-xl border border-hairline flex flex-col text-ink shadow-sm z-10 shrink-0" style={{ width: '260px', height: '100%', overflow: 'hidden' }}>
+      <aside className="bg-card rounded-xl border border-hairline flex flex-col text-ink shadow-sm z-10 shrink-0" style={{ width: '300px', height: '100%', overflow: 'hidden' }}>
         <div className="flex flex-col items-center pt-10 pb-8 border-b border-hairline shrink-0">
-          <Shield size={40} className="text-primary mb-4" />
-          <h2 className="font-semibold text-xl text-ink tracking-tight">ZTNA Admin</h2>
+          <Shield size={54} className="text-primary mb-4" />
+          <h2 className="text-ink tracking-tight" style={{ fontSize: '32px', fontWeight: 800 }}>ZTNA Admin</h2>
         </div>
-        <nav className="flex-1 py-4 px-4 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <nav className="flex-1 py-5 px-5 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {[
-            { path: '/dashboard', icon: <Activity size={20} />, label: '대시보드' },
-            { path: '/users', icon: <Users size={20} />, label: '임직원 통제' },
-            { path: '/devices', icon: <Server size={20} />, label: '단말 자산' },
+            { path: '/dashboard', icon: <Activity size={28} />, label: '대시보드' },
+            { path: '/users', icon: <Users size={28} />, label: '임직원 통제' },
+            { path: '/devices', icon: <Server size={28} />, label: '단말 자산' },
           ].map(({ path, icon, label }) => (
             <button key={path} onClick={() => navigate(path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(path) ? 'bg-canvas text-ink border border-hairline font-bold shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent font-semibold'}`}>
-              {icon} <span className="text-base flex-1 text-left">{label}</span>
+              className={`w-full flex items-center gap-4 px-4 py-4 rounded-lg transition-all ${isActive(path) ? 'bg-canvas text-ink border border-hairline shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent'}`}>
+              {icon} <span className="flex-1 text-left" style={{ fontSize: '22px', fontWeight: isActive(path) ? 700 : 500 }}>{label}</span>
             </button>
           ))}
         </nav>
-        <div className="p-4 border-t border-hairline bg-canvas-soft shrink-0">
+        <div className="p-5 border-t border-hairline bg-canvas-soft shrink-0">
           <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/login'); }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-card border border-hairline text-muted hover:text-semantic-error hover:border-semantic-error/30 rounded-lg transition-all font-semibold shadow-sm">
-            <LogOut size={20} /> <span className="text-base">로그아웃</span>
+            className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-card border border-hairline text-muted hover:text-semantic-error hover:border-semantic-error/30 rounded-lg transition-all shadow-sm">
+            <LogOut size={28} /> <span style={{ fontSize: '22px', fontWeight: 600 }}>로그아웃</span>
           </button>
         </div>
       </aside>
@@ -198,20 +220,20 @@ function Overview() {
         </div>
         <div className="flex-1" style={{ padding: '0 24px' }}>
           <div className="flex justify-between items-center text-sm text-muted font-bold border-b border-hairline py-4">
-            <span className="w-1/4">사용자</span>
-            <span className="w-1/4">IP 주소</span>
-            <span className="w-1/4">위험도 및 사유</span>
-            <span className="w-1/4 text-right">상태</span>
+            <span className="w-1/5">사용자</span>
+            <span className="w-1/5">IP 주소</span>
+            <span className="w-2/5">위험도 및 사유</span>
+            <span className="w-1/5 text-right">상태</span>
           </div>
           {logs.length > 0 ? logs.slice(0, 5).map((log, i) => (
             <div key={i} className="flex justify-between items-center text-base py-4 border-b border-canvas-soft last:border-0">
-              <span className="w-1/4 text-ink font-medium">{log.email || '알 수 없음'}</span>
-              <span className="w-1/4 text-body font-mono text-sm">{log.ip_address}</span>
-              <span className="w-1/4 flex items-center" style={{ gap: '8px' }}>
-                <span className={`font-bold ${log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'}`}>{log.risk_score}점</span>
-                <span className="text-body text-sm truncate">{log.reason}</span>
+              <span className="w-1/5 text-ink font-medium truncate pr-4">{log.email || '알 수 없음'}</span>
+              <span className="w-1/5 text-body font-mono text-sm truncate pr-4">{log.ip_address}</span>
+              <span className="w-2/5 flex items-center pr-4" style={{ gap: '8px' }}>
+                <span className={`font-bold whitespace-nowrap ${log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'}`}>{log.risk_score}점</span>
+                <span className="text-body text-sm truncate flex-1" title={log.reason}>{log.reason}</span>
               </span>
-              <span className="w-1/4 text-right font-bold">
+              <span className="w-1/5 text-right font-bold whitespace-nowrap">
                 <span className={log.action_taken === 'DENY' ? 'text-semantic-error' : log.action_taken === 'STEP_UP' ? 'text-primary' : 'text-semantic-success'}>
                   {log.action_taken === 'DENY' ? '차단됨' : log.action_taken === 'STEP_UP' ? 'OTP 요구' : '허용됨'}
                 </span>
@@ -225,6 +247,8 @@ function Overview() {
     </div>
   );
 }
+
+
 
 function AddUserPopup() {
   const [formData, setFormData] = useState({ email: '', password: '', name: '', department: '일반부서', role: 'USER' });
@@ -435,7 +459,7 @@ function DevicesPage() {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                      ◌ 승인 대기
+                      ◌ 인증 대기
                     </span>
                   )}
                 </td>
@@ -444,7 +468,7 @@ function DevicesPage() {
                     {d.is_trusted !== 1 ? (
                       <button onClick={() => handleApprove(d.id)}
                         className="px-3 py-1.5 bg-semantic-success text-white text-xs font-bold rounded-md hover:opacity-80 transition-all">
-                        승인
+                        인증
                       </button>
                     ) : (
                       <button onClick={() => handleRevoke(d.id)}

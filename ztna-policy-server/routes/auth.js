@@ -8,7 +8,7 @@ const { randomUUID } = require('crypto');
 const pool = require('../db');
 const transporter = require('../mailer');
 const { loginLimiter, otpLimiter } = require('../middleware/rateLimiter');
-const { calculateDistance } = require('../utils/distance');
+const { evaluateRisk } = require('../services/riskEngine');
 
 // [API 1] 회원가입
 router.post('/signup', async (req, res) => {
@@ -91,26 +91,19 @@ router.post('/login', loginLimiter, async (req, res) => {
             reasons.push('보안 컴플라이언스 위반 기기 (무결성 훼손)');
         }
 
-        // 기존 위치 기반 위험도 가산 (차단 확정이 아니더라도 기록용으로 계산)
-        if (latitude && longitude && currentDevice?.last_latitude && currentDevice?.last_longitude) {
-            const distance = calculateDistance(currentDevice.last_latitude, currentDevice.last_longitude, latitude, longitude);
+        // 2~4. 위험도 엔진(CARTA)을 통한 동적 점수 산출
+        let lastLoginData = null;
+        if (currentDevice) {
             const [lastLogin] = await pool.query(
                 `SELECT created_at FROM access_logs WHERE user_id = ? AND action_taken IN ('ALLOW', 'STEP_UP') ORDER BY created_at DESC LIMIT 1`,
                 [user.id]
             );
-            if (lastLogin.length > 0) {
-                const timeDiffHours = (now - new Date(lastLogin[0].created_at)) / 1000 / 3600;
-                if (timeDiffHours > 0) {
-                    const speed = distance / timeDiffHours;
-                    if (speed > 1000) { riskScore += 70; reasons.push(`물리적으로 불가능한 이동 감지`); }
-                    else if (speed > 500) { riskScore += 30; reasons.push(`비정상적 빠른 이동`); }
-                    else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동`); }
-                }
-            } else if (distance > 500) { riskScore += 20; reasons.push(`장거리 이동`); }
+            lastLoginData = lastLogin[0] || null;
         }
 
-        if (loginHour >= 2 && loginHour <= 5) { riskScore += 15; reasons.push(`비정상 시간대 접속`); }
-
+        const riskEvaluation = evaluateRisk(currentDevice, ipAddress, latitude, longitude, lastLoginData, loginHour);
+        riskScore += riskEvaluation.riskScore; // 누적
+        reasons = reasons.concat(riskEvaluation.reasons);
         // 정책 판별 수행
         if (riskScore >= 70 || reasons.some(r => r.includes('비인가') || r.includes('위반') || r.includes('해제'))) {
             action = 'DENY';

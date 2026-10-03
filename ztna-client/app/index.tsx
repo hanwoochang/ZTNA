@@ -28,6 +28,7 @@ export default function HomeScreen() {
 
     const {
         isLoggedIn, secretData, showOtpInput, otp, setShowOtpInput, setOtp, otpError, loginError, isLoading,
+        isBlockedByGateway, setIsBlockedByGateway,
         testGatewayAccess, handleLogin, handleResendOtp, handleVerifyOtp, handleLogout
     } = useAuth();
 
@@ -68,7 +69,8 @@ export default function HomeScreen() {
         collectContext();
     }, []);
 
-    if (!isDeviceSafe) return <BlockedScreen />;
+
+    if (!isDeviceSafe || isBlockedByGateway) return <BlockedScreen handleLogout={() => setIsBlockedByGateway(false)} />;
     if (isLoggedIn) return (
         <IntranetScreen
             email={email}

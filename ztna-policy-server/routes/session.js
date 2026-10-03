@@ -39,8 +39,8 @@ router.post('/verify-context', async (req, res) => {
         );
         const device = devices[0];
 
-        if (!device || device.is_trusted === 0 || device.last_ip_address !== currentIp) {
-            console.log(`[강제 추방] ${decoded.email} - 보안 컨텍스트 불일치`);
+        if (!device || device.is_trusted !== 1 || device.last_ip_address !== currentIp) {
+            console.log(`[강제 추방] ${decoded.email} - 보안 컨텍스트 불일치 (신뢰 해제 또는 IP 변경)`);
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
             return res.status(403).json({ action: 'TERMINATE', message: '보안 정책 위반 감지! 연결이 강제 종료됩니다.' });

@@ -27,7 +27,7 @@ type Props = {
     deviceId: string;
     ipAddress: string;
     secretData: string;
-    handleLogout: () => void;
+    handleLogout: (isRevoked?: boolean) => void;
 };
 
 // 1. 근태 관리 탭

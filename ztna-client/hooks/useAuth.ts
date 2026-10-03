@@ -17,6 +17,7 @@ export const useAuth = () => {
     const [otpError, setOtpError] = useState('');
     const [loginError, setLoginError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isBlockedByGateway, setIsBlockedByGateway] = useState(false);
 
     const testGatewayAccess = async (token: string, isAutoRecover: boolean = false) => {
         try {
@@ -59,8 +60,9 @@ export const useAuth = () => {
                 // is_trusted=0 기기 → 어드민 승인 대기
                 const msg = loginResponse.data.message;
                 if (Platform.OS === 'web') setLoginError(msg);
-                else Alert.alert('승인 대기', msg);
+                else Alert.alert('접근 대기', msg);
                 setIsLoading(false);
+                setIsBlockedByGateway(true);
                 return;
             }
 
@@ -131,6 +133,13 @@ export const useAuth = () => {
                 setIsLoading(false);
                 return;
             }
+            if (error.response?.status === 403 || error.response?.status === 401) {
+                if (msg.includes('해제') || msg.includes('차단') || msg.includes('블랙리스트')) {
+                    setIsBlockedByGateway(true);
+                    setIsLoading(false);
+                    return;
+                }
+            }
             if (Platform.OS === 'web') setLoginError(msg);
             else Alert.alert('접근 차단', msg);
         } finally {
@@ -191,6 +200,7 @@ export const useAuth = () => {
                 if (Platform.OS === 'web') setOtpError(msg);
                 else Alert.alert('기기 등록 완료', msg);
                 setShowOtpInput(false);
+                setIsBlockedByGateway(true);
             } else if (verifyResponse.data.token) {
                 if (Platform.OS !== 'web') Alert.alert('인증 성공!', '출입증이 발급되었습니다.');
                 setShowOtpInput(false);
@@ -213,15 +223,20 @@ export const useAuth = () => {
             if (error.response?.status === 401) {
                 if (msg.includes('무효화') || msg.includes('만료')) setShowOtpInput(false);
             }
+            if (error.response?.status === 403 && (msg.includes('해제') || msg.includes('차단') || msg.includes('블랙리스트'))) {
+                setShowOtpInput(false);
+                setIsBlockedByGateway(true);
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleLogout = async () => {
+    const handleLogout = async (isRevoked?: boolean | any) => {
+        const revoked = isRevoked === true; // React Native 이벤트 객체 방어
         try {
             const token = await Storage.getItemAsync('jwt_token');
-            if (token) {
+            if (token && !revoked) {
                 await axios.post(`${POLICY_SERVER_URL}/api/logout`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -234,11 +249,13 @@ export const useAuth = () => {
             setShowOtpInput(false);
             setSecretData('');
             setOtp('');
+            setIsBlockedByGateway(revoked);
         }
     };
 
     return {
         isLoggedIn, secretData, showOtpInput, setShowOtpInput, otp, setOtp, otpError, loginError, isLoading,
+        isBlockedByGateway, setIsBlockedByGateway,
         testGatewayAccess, handleLogin, handleResendOtp, handleVerifyOtp, handleLogout
     };
 };

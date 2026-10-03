@@ -25,7 +25,7 @@ async function run() {
 
     // 3. 관리자 대시보드 접근용 기기 자동 등록 (OTP 방지)
     await c.query(
-      "INSERT INTO devices (user_id, device_identifier, is_trusted, device_type, last_ip_address, is_compliant) VALUES (?, 'admin-dashboard-browser', 1, 'CORPORATE', '127.0.0.1', 1)",
+      "INSERT INTO devices (user_id, device_identifier, status, device_type, last_ip_address, is_compliant) VALUES (?, 'admin-dashboard-browser', 'APPROVED', 'CORPORATE', '127.0.0.1', 1)",
       [adminId]
     );
     console.log('[3/3] 관리자 웹 대시보드 브라우저 신뢰 기기 등록 완료');

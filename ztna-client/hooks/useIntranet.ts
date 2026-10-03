@@ -6,15 +6,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { GATEWAY_URL } from '../constants/config';
 
-export const useIntranet = (onForceLogout?: () => void, syncAllowDownload?: (val: boolean) => void) => {
+export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncAllowDownload?: (val: boolean) => void) => {
     const [isLoading, setIsLoading] = useState(false);
     const [attendanceData, setAttendanceData] = useState<{ check_in_time: string | null, check_out_time: string | null }>({ check_in_time: null, check_out_time: null });
 
     // API 응답 에러를 전역적으로 처리하는 헬퍼
     const handleApiError = (error: any, defaultMessage: string, silent: boolean = false) => {
         if (error.response?.status === 401 && error.response?.data?.revoked) {
-            Alert.alert('보안 경고', error.response.data.message || '세션이 강제 종료되었습니다.');
-            if (onForceLogout) onForceLogout();
+            if (onForceLogout) onForceLogout(true);
             return;
         }
         if (!silent) {

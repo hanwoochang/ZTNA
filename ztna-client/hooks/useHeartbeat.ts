@@ -7,7 +7,7 @@ import { Alert } from 'react-native';
 import { POLICY_SERVER_URL } from '../constants/config';
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
 
-export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout: () => void) => {
+export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout: (isRevoked?: boolean) => void) => {
     useEffect(() => {
         let heartbeatInterval: ReturnType<typeof setInterval>;
 
@@ -15,8 +15,7 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
             heartbeatInterval = setInterval(async () => {
                 const security = await checkDeviceSecurity();
                 if (!security.isSafe) {
-                    Alert.alert('보안 위협 감지', '루팅이 감지되어 연결을 종료합니다.');
-                    handleLogout();
+                    handleLogout(true);
                     return;
                 }
 
@@ -33,13 +32,11 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                         await Storage.setItemAsync('jwt_token', response.data.token);
                     }
                     if (response.data.action === 'TERMINATE') {
-                        Alert.alert('보안 경고', response.data.message);
-                        handleLogout();
+                        handleLogout(true);
                     }
                 } catch (error: any) {
                     if (error.response?.data?.action === 'TERMINATE') {
-                        Alert.alert('보안 경고', error.response.data.message);
-                        handleLogout();
+                        handleLogout(true);
                     }
                 }
             }, 30000); // 30초마다 보안 컨텍스트 검증 (AWS 배포 환경 고려)

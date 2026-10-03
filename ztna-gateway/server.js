@@ -52,11 +52,11 @@ const verifyToken = async (req, res, next) => {
                 [decoded.userId, decoded.deviceId]
             );
             
-            if (!devices[0] || devices[0].is_trusted === 0) {
-                console.log(`[강제 튕김] 관리자에 의해 신뢰가 해제된 기기 접근 차단! (${decoded.email})`);
+            if (!devices[0] || devices[0].is_trusted !== 1) {
+                console.log(`[강제 튕김] 관리자에 의해 신뢰 해제된 기기 접근 차단! (${decoded.email})`);
                 // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
                 return res.status(401).json({ 
-                    message: '관리자에 의해 기기 신뢰가 강제 해제되었습니다. 세션이 차단됩니다.', 
+                    message: '관리자에 의해 기기 접근이 차단/해제되었습니다. 세션이 차단됩니다.', 
                     revoked: true 
                 });
             }
