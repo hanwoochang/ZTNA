@@ -2,8 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
 const PDFDocument = require('pdfkit');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 5000;
+
+// 업로드 디렉토리 설정
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
+// Multer 설정
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ storage });
 
 // DB 연결
 const pool = mysql.createPool({
@@ -270,6 +286,97 @@ async function initEventsDB() {
 }
 initEventsDB();
 
+// --- 문서(Documents) DB 연동 API ---
+async function initDocumentsDB() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS intranet_documents (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                filename VARCHAR(255) NOT NULL,
+                original_name VARCHAR(255) NOT NULL,
+                author VARCHAR(100) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        // Check if empty, insert dummy if empty
+        const [rows] = await pool.query('SELECT COUNT(*) as count FROM intranet_documents');
+        if (rows[0].count === 0) {
+            await pool.query(`
+                INSERT INTO intranet_documents (title, description, filename, original_name, author) VALUES 
+                ('ZTNA v2.0 아키텍처 가이드', '사내망 보안 가이드 문서입니다.', 'dummy_guide.pdf', '가이드.pdf', '보안팀'),
+                ('2분기 매출 보고서 (대외비)', '외부 유출을 금지합니다.', 'dummy_report.pdf', '매출보고서.pdf', '재무팀')
+            `);
+        }
+    } catch (error) {
+        console.error('Documents DB 초기화 에러:', error);
+    }
+}
+initDocumentsDB();
+
+app.get('/api/documents', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT id, title, description, original_name, author, created_at FROM intranet_documents ORDER BY id DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
+    }
+});
+
+app.post('/api/documents', upload.single('file'), async (req, res) => {
+    const allowUpload = req.headers['x-allow-download'];
+    if (allowUpload === 'false') {
+        return res.status(403).json({ message: 'BYOD 기기에서는 기밀 문서를 업로드할 수 없습니다.' });
+    }
+
+    const { title, description } = req.body;
+    const author = req.headers['x-user-email']?.split('@')[0] || '익명';
+    
+    if (!req.file || !title) {
+        return res.status(400).json({ message: '제목과 파일을 모두 입력/첨부해주세요.' });
+    }
+
+    try {
+        const [result] = await pool.query(
+            'INSERT INTO intranet_documents (title, description, filename, original_name, author) VALUES (?, ?, ?, ?, ?)',
+            [title, description || '', req.file.filename, req.file.originalname, author]
+        );
+        res.json({ message: '문서가 성공적으로 업로드되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ message: '문서 업로드 실패' });
+    }
+});
+
+app.get('/api/documents/:id/download', async (req, res) => {
+    const allowDownload = req.headers['x-allow-download'];
+    if (allowDownload === 'false') {
+        return res.status(403).json({ message: 'BYOD 기기에서는 기밀 문서를 다운로드할 수 없습니다.' });
+    }
+
+    try {
+        const [rows] = await pool.query('SELECT filename, original_name FROM intranet_documents WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: '문서를 찾을 수 없습니다.' });
+        
+        const fileRecord = rows[0];
+        const filePath = path.join(__dirname, 'uploads', fileRecord.filename);
+        
+        if (fs.existsSync(filePath)) {
+            res.download(filePath, fileRecord.original_name);
+        } else {
+            // 더미 데이터 처리 (파일이 실제로 업로드 폴더에 없을 경우)
+            const doc = new PDFDocument();
+            res.setHeader('Content-disposition', `attachment; filename="${encodeURIComponent(fileRecord.original_name)}"`);
+            res.setHeader('Content-type', 'application/pdf');
+            doc.pipe(res);
+            doc.fontSize(20).text(`Dummy Document: ${fileRecord.original_name}`);
+            doc.end();
+        }
+    } catch (err) {
+        res.status(500).json({ message: '다운로드 실패' });
+    }
+});
+
 app.get('/api/employees', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT id, email, name, department, role FROM users ORDER BY email ASC');
@@ -324,8 +431,19 @@ app.delete('/api/events/:id', async (req, res) => {
 
 app.get('/api/notices', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM notices ORDER BY id DESC');
-        res.json(rows);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const [rows] = await pool.query('SELECT * FROM notices ORDER BY id DESC LIMIT ? OFFSET ?', [limit, offset]);
+        const [countRow] = await pool.query('SELECT COUNT(*) as total FROM notices');
+        
+        res.json({
+            notices: rows,
+            total: countRow[0].total,
+            page,
+            totalPages: Math.ceil(countRow[0].total / limit)
+        });
     } catch (err) {
         res.status(500).json({ message: 'DB 에러가 발생했습니다.' });
     }

@@ -33,7 +33,14 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
 
     const getAuthHeader = async () => {
         const token = await Storage.getItemAsync('jwt_token');
-        return { Authorization: `Bearer ${token}` };
+        return { 
+        isLoading, 
+        attendanceData, handleAttendance, fetchTodayAttendance,
+        documents, fetchDocuments, uploadDocument, downloadDocument,
+        notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice,
+        events, fetchEvents, createEvent, deleteEvent,
+        employees, fetchEmployees
+    };
     };
 
     const fetchTodayAttendance = async () => {
@@ -65,14 +72,14 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         }
     };
 
-    const downloadSecretPdf = async () => {
+    const downloadDocument = async (id: number, filename: string) => {
         setIsLoading(true);
         try {
             const token = await Storage.getItemAsync('jwt_token');
             if (!token) throw new Error('인증 토큰이 없습니다.');
 
             if (Platform.OS === 'web') {
-                const response = await fetch(`${GATEWAY_URL}/private/api/documents/secret.pdf`, {
+                const response = await fetch(`${GATEWAY_URL}/private/api/documents/${id}/download`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!response.ok) {
@@ -83,15 +90,15 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
                 const blobUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = blobUrl;
-                link.download = 'secret_document.pdf';
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(blobUrl);
             } else {
-                const fileUri = `${(FileSystem as any).documentDirectory}secret_document.pdf`;
+                const fileUri = `${(FileSystem as any).documentDirectory}${filename}`;
                 const downloadRes = await FileSystem.downloadAsync(
-                    `${GATEWAY_URL}/private/api/documents/secret.pdf`,
+                    `${GATEWAY_URL}/private/api/documents/${id}/download`,
                     fileUri,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
