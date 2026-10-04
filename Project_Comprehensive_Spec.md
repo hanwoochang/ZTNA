@@ -260,6 +260,15 @@
 
 ---
 
+## 💡 아키텍처 설계 결정 및 한계점 (Architectural Decisions & Limitations)
+
+### 1. ZTNA 구현 방식: 보안 워크스페이스(Secure Enterprise Browser) 모델 채택
+- **논의 배경:** 상용 ZTNA 솔루션(Zscaler, V3 모바일 등)처럼 백그라운드에서 동작하며 스마트폰 내 별도의 타 사내 앱 네트워크를 OS 단에서 가로채는 'Agent(VPN Service) 기반 ZTNA' 도입을 검토함.
+- **선택과 한계:** OS 수준의 VPN 통제 방식은 안드로이드/iOS 내부 커널(네트워크 스택) 제어 및 Native(C, Swift, Kotlin) 개발이 필수적이며, 현재 채택한 크로스 플랫폼 프레임워크(React Native / Expo) 환경에서는 현실적인 기한 내 구현이 불가능함.
+- **최종 결정 (우회 및 고도화):** 하나의 앱 내부에 사내 인트라넷(기밀 문서, 게시판, 근태 관리) 기능을 통합 내장시키는 **'올인원 보안 워크스페이스(Secure Workspace) 모델'**을 채택함. 임직원이 별도의 ZTNA 에이전트를 켜고 끄는 번거로움 없이, 본 사내 전용 보안 앱에 접속하는 순간 ZTNA 정책이 즉각적이고 통합적으로 적용되도록 설계하여 사용자 경험(UX)과 보안성을 모두 확보함.
+
+---
+
 ## 🎯 최종 산출물 (Deliverables)
 1. **ZTNA Client App:** 안드로이드 설치용 `.apk` 파일
 2. **ZTNA Policy & Gateway Server:** AWS EC2 위에서 구동되는 백엔드 인프라
