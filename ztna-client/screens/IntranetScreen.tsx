@@ -243,6 +243,7 @@ const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocum
     const [docTitle, setDocTitle] = useState('');
     const [docDesc, setDocDesc] = useState('');
     const [selectedFile, setSelectedFile] = useState<any>(null);
+    const [currentDocIndex, setCurrentDocIndex] = useState(0);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [detailVisible, setDetailVisible] = useState(false);
@@ -307,44 +308,73 @@ const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocum
             
             <View style={{ marginBottom: 16 }}>
                 <Text style={[styles.heading3, { marginBottom: 12 }]}>Top Secret Documents</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
-                    {isLoading && documents?.length === 0 ? (
-                        <View style={[styles.cardFeatured, { width: 280, marginRight: 16 }]}>
-                            <SkeletonLoader height={24} width="100%" style={{ marginBottom: 12 }} />
-                            <SkeletonLoader height={24} width="70%" />
-                        </View>
-                    ) : (
-                        documents?.map((doc: any) => (
-                            <View key={doc.id} style={[styles.cardFeatured, { width: 280, marginRight: 16 }]}>
-                                <Text style={[styles.infoText, { fontWeight: '700', fontSize: 18, marginBottom: 4 }]} numberOfLines={2}>{doc.title}</Text>
-                                <Text style={[styles.noticeMeta, { marginBottom: 16 }]} numberOfLines={2}>{doc.description}</Text>
-                                <View style={{ flex: 1 }} />
-                                <Text style={[styles.noticeMeta, { marginBottom: 12 }]}>{doc.original_name}</Text>
-                                <TouchableOpacity 
-                                    style={[styles.buttonOutline, { marginBottom: 0, flexDirection: 'row', justifyContent: 'center', opacity: allowDownload ? 1 : 0.5 }]} 
-                                    onPress={() => downloadDocument(doc.id, doc.original_name)} 
-                                    disabled={isLoading || !allowDownload}
-                                >
-                                    <Icon name={allowDownload ? "download" : "lock"} size={16} color={colors.text} style={{ marginRight: 8 }} />
-                                    <Text style={styles.buttonOutlineText}>{allowDownload ? 'Download PDF' : 'Download Disabled'}</Text>
-                                </TouchableOpacity>
+                <View>
+                    <ScrollView 
+                        horizontal 
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={{ paddingBottom: 8 }}
+                        onMomentumScrollEnd={(e) => {
+                            const slideSize = e.nativeEvent.layoutMeasurement.width;
+                            const index = e.nativeEvent.contentOffset.x / slideSize;
+                            setCurrentDocIndex(Math.round(index));
+                        }}
+                        scrollEventThrottle={16}
+                        snapToInterval={isDesktop ? 752 : width - 48}
+                        decelerationRate="fast"
+                    >
+                        {isLoading && documents?.length === 0 ? (
+                            <View style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
+                                <SkeletonLoader height={24} width="100%" style={{ marginBottom: 12 }} />
+                                <SkeletonLoader height={24} width="70%" />
                             </View>
-                        ))
-                    )}
+                        ) : (
+                            documents?.map((doc: any) => (
+                                <View key={doc.id} style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
+                                    <Text style={[styles.infoText, { fontWeight: '700', fontSize: 18, marginBottom: 4 }]} numberOfLines={2}>{doc.title}</Text>
+                                    <Text style={[styles.noticeMeta, { marginBottom: 16 }]} numberOfLines={2}>{doc.description}</Text>
+                                    <View style={{ flex: 1 }} />
+                                    <Text style={[styles.noticeMeta, { marginBottom: 12 }]}>{doc.original_name}</Text>
+                                    <TouchableOpacity 
+                                        style={[styles.buttonOutline, { marginBottom: 0, flexDirection: 'row', justifyContent: 'center', opacity: allowDownload ? 1 : 0.5 }]} 
+                                        onPress={() => downloadDocument(doc.id, doc.original_name)} 
+                                        disabled={isLoading || !allowDownload}
+                                    >
+                                        <Icon name={allowDownload ? "download" : "lock"} size={16} color={colors.text} style={{ marginRight: 8 }} />
+                                        <Text style={styles.buttonOutlineText}>{allowDownload ? 'Download PDF' : 'Download Disabled'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+                        
+                        {allowDownload && (
+                            <TouchableOpacity 
+                                style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.borderSoft, backgroundColor: 'transparent' }]}
+                                onPress={() => setUploadModalVisible(true)}
+                            >
+                                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                                    <Icon name="plus" size={24} color={colors.onPrimary} />
+                                </View>
+                                <Text style={[styles.infoText, { fontWeight: 'bold' }]}>새 문서 업로드</Text>
+                                <Text style={styles.noticeMeta}>CORPORATE 전용</Text>
+                            </TouchableOpacity>
+                        )}
+                    </ScrollView>
                     
-                    {allowDownload && (
-                        <TouchableOpacity 
-                            style={[styles.cardFeatured, { width: 280, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.borderSoft, backgroundColor: 'transparent' }]}
-                            onPress={() => setUploadModalVisible(true)}
-                        >
-                            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-                                <Icon name="plus" size={24} color={colors.onPrimary} />
-                            </View>
-                            <Text style={[styles.infoText, { fontWeight: 'bold' }]}>새 문서 업로드</Text>
-                            <Text style={styles.noticeMeta}>CORPORATE 전용</Text>
-                        </TouchableOpacity>
-                    )}
-                </ScrollView>
+                    {/* Pagination Dots */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 }}>
+                        {Array.from({ length: (documents?.length || 0) + (allowDownload ? 1 : 0) }).map((_, i) => (
+                            <View 
+                                key={i} 
+                                style={{ 
+                                    width: 8, height: 8, borderRadius: 4, 
+                                    backgroundColor: currentDocIndex === i ? colors.text : colors.borderSoft, 
+                                    marginHorizontal: 4 
+                                }} 
+                            />
+                        ))}
+                    </View>
+                </View>
             </View>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 32, marginBottom: 16 }}>
