@@ -258,6 +258,21 @@ const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocum
     const currentUserHandle = email?.split('@')[0] || '';
     const { width } = useWindowDimensions();
     const isDesktop = width > 768;
+    const docScrollRef = useRef<any>(null);
+
+    const slideLeft = () => {
+        if (currentDocIndex > 0) {
+            docScrollRef.current?.scrollTo({ x: (currentDocIndex - 1) * (isDesktop ? 752 : width - 48), animated: true });
+            setCurrentDocIndex(currentDocIndex - 1);
+        }
+    };
+    const slideRight = () => {
+        const totalItems = (documents?.length || 0) + (allowDownload ? 1 : 0);
+        if (currentDocIndex < totalItems - 1) {
+            docScrollRef.current?.scrollTo({ x: (currentDocIndex + 1) * (isDesktop ? 752 : width - 48), animated: true });
+            setCurrentDocIndex(currentDocIndex + 1);
+        }
+    };
 
     const handleUpload = async () => {
         if (!docTitle || !selectedFile) { alert('제목과 파일을 선택해주세요.'); return; }
@@ -308,8 +323,25 @@ const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocum
             
             <View style={{ marginBottom: 16 }}>
                 <Text style={[styles.heading3, { marginBottom: 12 }]}>Top Secret Documents</Text>
-                <View>
+                <View style={{ position: 'relative' }}>
+                    {isDesktop && currentDocIndex > 0 && (
+                        <TouchableOpacity 
+                            onPress={slideLeft} 
+                            style={{ position: 'absolute', left: -20, top: '40%', zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.cardBackground, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 }}
+                        >
+                            <Icon name="chevron-left" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    )}
+                    {isDesktop && currentDocIndex < ((documents?.length || 0) + (allowDownload ? 1 : 0) - 1) && (
+                        <TouchableOpacity 
+                            onPress={slideRight} 
+                            style={{ position: 'absolute', right: -20, top: '40%', zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.cardBackground, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 }}
+                        >
+                            <Icon name="chevron-right" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    )}
                     <ScrollView 
+                        ref={docScrollRef}
                         horizontal 
                         pagingEnabled
                         showsHorizontalScrollIndicator={false} 
