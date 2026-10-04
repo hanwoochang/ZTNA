@@ -826,10 +826,10 @@ export const IntranetScreen = (props: Props) => {
         }, 30000);
 
         if (Platform.OS !== 'web') {
-            ScreenCapture.preventScreenCaptureAsync();
+            // ScreenCapture.preventScreenCaptureAsync(); // 캡처 허용을 위해 임시 주석 처리
             return () => {
                 clearInterval(heartbeatInterval);
-                ScreenCapture.allowScreenCaptureAsync();
+                // ScreenCapture.allowScreenCaptureAsync();
             };
         }
 

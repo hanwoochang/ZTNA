@@ -224,22 +224,20 @@
 
 ---
 
-### ☁️ Phase 3: 인프라 구축, 통합 배포 및 앱 빌드 (7주차 ~ 9주차)
-*모든 개발을 완료하고 24시간 가동되는 클라우드 환경에 시스템 전체를 상용화 수준으로 배포하는 단계*
+### ☁️ Phase 3: 하이브리드 아키텍처 배포(터널링 도입) 및 앱 빌드 (7주차 ~ 9주차)
+*모든 개발을 완료하고 실제 시연을 위한 하이브리드 배포 환경(또는 로컬 터널링)과 앱 빌드를 수행하는 단계*
 
-- **7주차: AWS EC2 인프라 및 DB 세팅**
-  - AWS EC2 프리티어(Ubuntu) 인스턴스 대여 및 방화벽(보안 그룹) 설정
-  - Linux 환경 내 Node.js 및 MySQL 8.0 설치 및 로컬 DB 마이그레이션
+- **7주차: Cloudflare Tunnels 도입 및 배포 전략 확립**
+  - 졸업작품 데모 시연의 안정성과 ZTNA 'Dark Cloud(보이지 않는 자원)' 사상을 모두 만족하기 위해 내 PC(로컬) + Cloudflare Tunnels 조합 도입
+  - 로컬 환경의 게이트웨이 및 타겟 서버를 외부망(LTE/5G)으로 안전하게 터널링 연동 및 테스트
 
-- **8주차: 백엔드 무중단 배포 및 대시보드 퍼블릭 배포**
-  - Policy Server, Gateway, Target Server 코드 AWS 업로드 및 PM2 무중단 환경 구축 (Nginx 리버스 프록시)
-  - 완성된 관리자 웹 대시보드를 Vercel/Netlify에 배포
-  - [보안 고도화] 관리자 대시보드(Admin Web) ZTNA 보호 적용 (IP 화이트리스트 기반 접근 제어)
+- **8주차: (선택) 하이브리드 배포 인프라 구축**
+  - ZTNA의 정석적인 아키텍처 구현을 위해 정책 서버(Control Plane)와 관리자 웹만 AWS EC2 무료 티어로 이전하는 하이브리드 구성 테스트
+  - 터널링된 로컬 타겟 서버와 AWS 정책 서버 간의 안정적인 실시간 통신(CORS, DB 접속) 검증
 
-- **9주차: Expo EAS Build 및 최종 상용망 테스트**
-  - 모바일 앱(Client)의 모든 API 요청 주소를 AWS 공인 IP로 전면 교체
-  - Expo 클라우드 빌드(EAS) 설정 및 Android Standalone App(`.apk`) 추출
-  - 실기기 스마트폰 설치 후 5G/LTE 상용망 환경에서의 보안 통신 완벽 테스트
+- **9주차: Expo EAS Build 및 최종 데모 앱 추출**
+  - 모바일 앱(Client)의 모든 API 요청 주소를 Cloudflare 터널 URL(또는 AWS IP)로 전면 교체
+  - Expo 클라우드 빌드(EAS) 설정 및 시연용 Android Standalone App(`.apk`) 추출 및 기기 설치 테스트
 
 ---
 
