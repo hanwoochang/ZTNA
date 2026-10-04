@@ -1,6 +1,6 @@
 // 개발용 DB 초기화 스크립트 (모든 데이터 삭제 후 관리자 계정만 생성)
 // 실행: node reset_db.js   ※ DB 접속 정보는 .env에서 읽습니다.
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
