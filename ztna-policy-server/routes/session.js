@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
-const pool = require('../db');
+const pool = require('../config/db');
 
 // [API 5] 로그아웃
 router.post('/logout', async (req, res) => {

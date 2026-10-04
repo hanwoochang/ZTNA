@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
+const pool = require('../config/db');
 const isAdmin = require('../middleware/isAdmin');
 
 // 모든 /api/admin 라우터에 isAdmin 미들웨어 적용

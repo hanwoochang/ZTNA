@@ -5,8 +5,8 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
-const pool = require('../db');
-const transporter = require('../mailer');
+const pool = require('../config/db');
+const transporter = require('../utils/mailer');
 const { loginLimiter, otpLimiter } = require('../middleware/rateLimiter');
 const { evaluateRisk } = require('../services/riskEngine');
 

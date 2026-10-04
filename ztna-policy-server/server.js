@@ -16,7 +16,7 @@ app.use('/api', require('./routes/session'));
 app.use('/api/admin', require('./routes/admin'));
 
 // 만료된 블랙리스트 토큰 1시간마다 자동 정리
-const pool = require('./db');
+const pool = require('./config/db');
 setInterval(async () => {
     await pool.query('DELETE FROM token_blacklist WHERE expires_at < NOW()');
     console.log('[정리 완료] 만료된 블랙리스트 토큰 삭제');
