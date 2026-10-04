@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const pool = require('../db');
+const pool = require('../config/db');
 
 async function isAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
