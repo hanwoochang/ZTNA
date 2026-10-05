@@ -43,7 +43,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col" style={{ gap: '24px', height: '100%', overflow: 'hidden' }}>
+      <main id="main-dashboard-content" className="flex-1 flex flex-col" style={{ gap: '24px', height: '100%', overflow: 'hidden' }}>
         <header className="flex items-center shrink-0 pt-2" style={{ gap: '16px' }}>
           <h1 className="text-4xl font-bold text-ink tracking-tight">{title}</h1>
           <div className="h-5 w-px bg-muted/40"></div>
