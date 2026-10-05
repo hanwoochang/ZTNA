@@ -137,7 +137,7 @@ export const IntranetScreen = (props: Props) => {
                                         <Text style={{ color: colors.onPrimary, fontWeight: 'bold' }}>{props.email ? props.email[0].toUpperCase() : '?'}</Text>
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={[styles.infoText, { marginBottom: 0, fontWeight: '600', fontSize: 18 }]} numberOfLines={1}>{props.email}</Text>
+                                        <Text style={[styles.infoText, { marginBottom: 0, fontWeight: '600', fontSize: Platform.OS === 'web' ? 18 : 14 }]} numberOfLines={1}>{props.email}</Text>
                                     </View>
                                 </View>
                             </View>
@@ -161,7 +161,7 @@ export const IntranetScreen = (props: Props) => {
                         {!allowDownload && (
                             <View style={{ backgroundColor: '#FFEDD5', padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Icon name="alert-triangle" size={16} color="#C2410C" style={{ marginRight: 8 }} />
-                                <Text style={{ color: '#C2410C', fontWeight: 'bold', fontSize: 17 }}>
+                                <Text style={{ color: '#C2410C', fontWeight: 'bold', fontSize: Platform.OS === 'web' ? 17 : 13 }}>
                                     BYOD / 외부 접속 모드: 기밀 문서 다운로드가 제한됩니다.
                                 </Text>
                             </View>
