@@ -70,10 +70,14 @@ router.get('/users', async (req, res) => {
         const [users] = await pool.query(`
             SELECT 
                 u.id, u.email, u.role, u.department, u.name, u.is_active, u.created_at,
-                IFNULL(SUM(l.risk_score), 0) as current_risk
+                IFNULL((
+                    SELECT risk_score 
+                    FROM access_logs 
+                    WHERE user_id = u.id 
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                ), 0) as current_risk
             FROM users u
-            LEFT JOIN access_logs l ON u.id = l.user_id AND l.created_at >= NOW() - INTERVAL 7 DAY
-            GROUP BY u.id
             ORDER BY u.id DESC
         `);
         res.json(users);

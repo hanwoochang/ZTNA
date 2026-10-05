@@ -33,7 +33,7 @@ export function UsersPage() {
               <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이메일</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>권한</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서</th>
-              <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태 및 위험도(최근 7일)</th>
+              <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태 및 현재 위험도</th>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +54,7 @@ export function UsersPage() {
                     <div className="flex items-center gap-2">
                       <ShieldAlert size={14} className={u.current_risk >= 50 ? 'text-semantic-error' : u.current_risk > 0 ? 'text-primary' : 'text-semantic-success'} />
                       <span className={`text-sm font-bold ${u.current_risk >= 50 ? 'text-semantic-error' : u.current_risk > 0 ? 'text-primary' : 'text-semantic-success'}`}>
-                        누적 {u.current_risk}점
+                        현재 {u.current_risk}점
                       </span>
                     </div>
                   </div>
