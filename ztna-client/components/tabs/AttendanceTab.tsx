@@ -65,7 +65,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                                 ]}
                             >
                                 <Icon name="users" size={18} color={colors.text} style={{ marginRight: 8 }} />
-                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+                                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
                                     {isDirectoryOpen ? 'Close Directory' : 'Open Directory'}
                                 </Text>
                             </Pressable>
@@ -123,8 +123,8 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                                                 <Icon name="user" size={18} color={colors.subText} />
                                             </View>
                                             <View>
-                                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
-                                                <Text style={{ fontSize: 12, color: colors.subText }}>{emp.department || '미배정'} · {emp.email}</Text>
+                                                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: 16, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
+                                                <Text style={{ fontSize: 16, color: colors.subText }}>{emp.department || '미배정'} · {emp.email}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -169,7 +169,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                         </View>
                         {employees?.map((emp: any) => (
                             <View key={emp.id} style={[styles.card, { marginBottom: 12 }]}>
-                                <Text style={[styles.heading3, { marginBottom: 4 }]}>{emp.name || '이름 미상'} <Text style={{fontSize: 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
+                                <Text style={[styles.heading3, { marginBottom: 4 }]}>{emp.name || '이름 미상'} <Text style={{fontSize: 16, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
                                 <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서: {emp.department || '미배정'}</Text>
                                 <Text style={styles.infoText}>이메일: {emp.email}</Text>
                             </View>

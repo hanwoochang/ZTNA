@@ -38,7 +38,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const fetchTodayAttendance = async () => {
         try {
             const headers = await getAuthHeader();
-            const response = await axios.get(`${GATEWAY_URL}/private/api/attendance/today`, { headers });
+            const response = await axios.get(`${GATEWAY_URL}/private/api/attendance/today?_t=${Date.now()}`, { headers });
             handleSyncHeader(response);
             setAttendanceData({
                 check_in_time: response.data.check_in_time,
@@ -68,7 +68,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const fetchDocuments = async () => {
         try {
             const headers = await getAuthHeader();
-            const response = await axios.get(`${GATEWAY_URL}/private/api/documents`, { headers });
+            const response = await axios.get(`${GATEWAY_URL}/private/api/documents?_t=${Date.now()}`, { headers });
             setDocuments(response.data);
         } catch (error: any) {
             handleApiError(error, '[기밀문서 목록 조회 실패]', true);
@@ -161,7 +161,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const fetchNotices = async (page = 1) => {
         try {
             const headers = await getAuthHeader();
-            const response = await axios.get(`${GATEWAY_URL}/private/api/notices?page=${page}&limit=10`, { headers });
+            const response = await axios.get(`${GATEWAY_URL}/private/api/notices?page=${page}&limit=10&_t=${Date.now()}`, { headers });
             handleSyncHeader(response);
             setNotices(response.data.notices || response.data); 
             // API가 수정되지 않은 경우를 대비해 response.data 백폴백
@@ -225,7 +225,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const fetchEvents = async () => {
         try {
             const headers = await getAuthHeader();
-            const response = await axios.get(`${GATEWAY_URL}/private/api/events`, { headers });
+            const response = await axios.get(`${GATEWAY_URL}/private/api/events?_t=${Date.now()}`, { headers });
             setEvents(response.data);
         } catch (error: any) {
             handleApiError(error, '[일정 목록 조회 실패]', true);
@@ -261,7 +261,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const fetchEmployees = async () => {
         try {
             const headers = await getAuthHeader();
-            const response = await axios.get(`${GATEWAY_URL}/private/api/employees`, { headers });
+            const response = await axios.get(`${GATEWAY_URL}/private/api/employees?_t=${Date.now()}`, { headers });
             setEmployees(response.data);
         } catch (error: any) {
             handleApiError(error, '[임직원 목록 조회 실패]', true);
