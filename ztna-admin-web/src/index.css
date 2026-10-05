@@ -13,3 +13,6 @@ body {
 #main-dashboard-content p, #main-dashboard-content span, #main-dashboard-content td, #main-dashboard-content th, #main-dashboard-content div { font-size: 18px !important; line-height: 1.5 !important; }  
 #main-dashboard-content .text-6xl { font-size: 64px !important; }  
 #main-dashboard-content .recharts-text { font-size: 16px !important; } 
+  
+/* Fix table cell padding */  
+#main-dashboard-content td, #main-dashboard-content th { padding-left: 24px !important; padding-right: 24px !important; padding-top: 16px !important; padding-bottom: 16px !important; } 
