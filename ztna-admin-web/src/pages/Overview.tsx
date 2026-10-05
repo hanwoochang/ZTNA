@@ -10,11 +10,17 @@ export function Overview() {
   const [trend, setTrend] = useState<any[]>([]);
   const [topRisky, setTopRisky] = useState<any[]>([]);
 
-  useEffect(() => {
+  const fetchData = () => {
     api.get('/admin/stats').then(res => setStats(res.data)).catch(console.error);
     api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
     api.get('/admin/stats/trend').then(res => setTrend(res.data.map((d: any) => ({ ...d, avgRisk: Number(d.avgRisk) })))).catch(console.error);
     api.get('/admin/stats/top-risky').then(res => setTopRisky(res.data.map((d: any) => ({ ...d, totalRisk: Number(d.totalRisk) })))).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

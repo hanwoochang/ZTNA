@@ -5,8 +5,12 @@ import api from '../api';
 export function LogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
 
+  const fetchLogs = () => api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
+  
   useEffect(() => { 
-    api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

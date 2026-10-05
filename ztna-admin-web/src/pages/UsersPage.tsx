@@ -10,11 +10,15 @@ export function UsersPage() {
   const fetchUsers = () => api.get('/admin/users').then(res => setUsers(res.data)).catch(console.error);
   useEffect(() => { 
     fetchUsers(); 
+    const interval = setInterval(fetchUsers, 3000);
     const handleMessage = (e: MessageEvent) => {
       if (e.data === 'RELOAD_USERS') fetchUsers();
     };
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   return (
