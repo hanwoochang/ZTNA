@@ -67,7 +67,15 @@ router.get('/stats/top-risky', async (req, res) => {
 // 2. 전체 유저 목록 조회
 router.get('/users', async (req, res) => {
     try {
-        const [users] = await pool.query('SELECT id, email, role, department, name, is_active, created_at FROM users ORDER BY id DESC');
+        const [users] = await pool.query(`
+            SELECT 
+                u.id, u.email, u.role, u.department, u.name, u.is_active, u.created_at,
+                IFNULL(SUM(l.risk_score), 0) as current_risk
+            FROM users u
+            LEFT JOIN access_logs l ON u.id = l.user_id AND l.created_at >= NOW() - INTERVAL 7 DAY
+            GROUP BY u.id
+            ORDER BY u.id DESC
+        `);
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: '유저 목록 조회 실패', error: error.message });

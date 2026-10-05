@@ -84,7 +84,7 @@ export function Overview() {
             <span className="w-2/5">위험도 및 사유</span>
             <span className="w-1/5 text-right">상태</span>
           </div>
-          {logs.length > 0 ? logs.slice(0, 5).map((log, i) => (
+          {logs.length > 0 ? logs.slice(0, 10).map((log, i) => (
             <div key={i} className="flex justify-between items-center text-base py-4 border-b border-canvas-soft last:border-0">
               <span className="w-1/5 text-ink font-medium truncate pr-4">{log.email || '알 수 없음'}</span>
               <span className="w-1/5 text-body font-mono text-sm truncate pr-4">{log.ip_address}</span>

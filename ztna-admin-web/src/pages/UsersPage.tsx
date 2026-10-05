@@ -33,7 +33,7 @@ export function UsersPage() {
               <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이메일</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>권한</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서</th>
-              <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태</th>
+              <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태 및 위험도(최근 7일)</th>
             </tr>
           </thead>
           <tbody>
@@ -46,9 +46,17 @@ export function UsersPage() {
                 </td>
                 <td className="px-8 text-body font-medium" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.department}</td>
                 <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
-                  <div className="flex items-center gap-4">
-                    <div className={`w-3.5 h-3.5 rounded-full ${u.is_active ? 'bg-semantic-success' : 'bg-semantic-error'}`}></div>
-                    <span className="text-ink font-bold">{u.is_active ? '정상(Active)' : '정지됨'}</span>
+                  <div className="flex flex-col gap-1 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${u.is_active ? 'bg-semantic-success' : 'bg-semantic-error'}`}></div>
+                      <span className="text-ink font-bold text-base">{u.is_active ? '정상(Active)' : '정지됨'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert size={14} className={u.current_risk >= 50 ? 'text-semantic-error' : u.current_risk > 0 ? 'text-primary' : 'text-semantic-success'} />
+                      <span className={`text-sm font-bold ${u.current_risk >= 50 ? 'text-semantic-error' : u.current_risk > 0 ? 'text-primary' : 'text-semantic-success'}`}>
+                        누적 {u.current_risk}점
+                      </span>
+                    </div>
                   </div>
                 </td>
               </tr>
