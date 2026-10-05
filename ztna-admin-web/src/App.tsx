@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { Overview } from './pages/Overview';
 import { UsersPage } from './pages/UsersPage';
 import { DevicesPage } from './pages/DevicesPage';
+import { LogsPage } from './pages/LogsPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AddUserPopup } from './components/modals/AddUserPopup';
 
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/users" element={<DashboardLayout><UsersPage /></DashboardLayout>} />
         <Route path="/users/add" element={<AddUserPopup />} />
         <Route path="/devices" element={<DashboardLayout><DevicesPage /></DashboardLayout>} />
+          <Route path="/logs" element={<DashboardLayout><LogsPage /></DashboardLayout>} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     </BrowserRouter>

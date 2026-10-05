@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Activity, Users, Server, LogOut } from 'lucide-react';
+import { Shield, Activity, Users, Server, LogOut, ClipboardList } from 'lucide-react';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '대시보드',
   '/users': '임직원 통제',
   '/devices': '단말 자산',
+  '/logs': '접속 로그 감사',
 };
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             { path: '/dashboard', icon: <Activity size={28} />, label: '대시보드' },
             { path: '/users', icon: <Users size={28} />, label: '임직원 통제' },
             { path: '/devices', icon: <Server size={28} />, label: '단말 자산' },
+            { path: '/logs', icon: <ClipboardList size={28} />, label: '접속 로그 감사' },
           ].map(({ path, icon, label }) => (
             <button key={path} onClick={() => navigate(path)}
               className={`w-full flex items-center gap-4 px-4 py-4 rounded-lg transition-all ${isActive(path) ? 'bg-canvas text-ink border border-hairline shadow-sm' : 'text-body hover:bg-canvas-soft hover:text-ink border border-transparent'}`}>

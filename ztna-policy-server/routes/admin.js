@@ -131,7 +131,7 @@ router.get('/logs', async (req, res) => {
             SELECT l.id, u.email, l.ip_address, l.risk_score, l.action_taken, l.reason, l.created_at 
             FROM access_logs l 
             LEFT JOIN users u ON l.user_id = u.id 
-            ORDER BY l.id DESC LIMIT 100
+            ORDER BY l.id DESC LIMIT 2000
         `);
         res.json(logs);
     } catch (error) {
