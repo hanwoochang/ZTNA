@@ -45,9 +45,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <main className="flex-1 flex flex-col" style={{ gap: '24px', height: '100%', overflow: 'hidden' }}>
         <header className="flex items-center shrink-0 pt-2" style={{ gap: '16px' }}>
-          <h1 className="text-3xl font-bold text-ink tracking-tight">{title}</h1>
+          <h1 className="text-4xl font-bold text-ink tracking-tight">{title}</h1>
           <div className="h-5 w-px bg-muted/40"></div>
-          <p className="text-body text-base font-medium">네트워크 접근 통제 및 단말기 보안 현황을 간략히 확인할 수 있습니다.</p>
+          <p className="text-body text-lg font-medium">네트워크 접근 통제 및 단말기 보안 현황을 간략히 확인할 수 있습니다.</p>
         </header>
         <div className="flex-1 overflow-y-auto bg-transparent pb-6 pr-4">
           {children}
