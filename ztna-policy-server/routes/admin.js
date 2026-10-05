@@ -109,6 +109,22 @@ router.post('/users', async (req, res) => {
     }
 });
 
+// 2-2. 임직원 완전 삭제 (DELETE)
+router.delete('/users/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        // 외래키(FK) 참조 무결성을 위해 관련된 기기 및 로그를 먼저 삭제합니다.
+        await pool.query('DELETE FROM access_logs WHERE user_id = ?', [userId]);
+        await pool.query('DELETE FROM devices WHERE user_id = ?', [userId]);
+        const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+        
+        if (result.affectedRows === 0) return res.status(404).json({ message: '임직원을 찾을 수 없습니다.' });
+        res.json({ message: '임직원이 영구적으로 삭제되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '임직원 삭제 실패', error: error.message });
+    }
+});
+
 // 3. 기기 현황 목록 조회
 router.get('/devices', async (req, res) => {
     try {

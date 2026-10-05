@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
+import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import api from '../api';
 
@@ -8,6 +8,19 @@ export function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
 
   const fetchUsers = () => api.get('/admin/users').then(res => setUsers(res.data)).catch(console.error);
+
+  const handleDeleteUser = async (id: number, name: string) => {
+    if (window.confirm(`정말로 임직원 '${name}'님을 삭제하시겠습니까? 관련된 모든 단말기와 접속 로그가 함께 영구 삭제됩니다.`)) {
+      try {
+        await api.delete(`/admin/users/${id}`);
+        fetchUsers(); // Refresh immediately
+      } catch (error) {
+        alert('삭제에 실패했습니다.');
+        console.error(error);
+      }
+    }
+  };
+
   useEffect(() => { 
     fetchUsers(); 
     const interval = setInterval(fetchUsers, 3000);
@@ -38,6 +51,7 @@ export function UsersPage() {
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>권한</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서</th>
               <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태 및 현재 위험도</th>
+              <th className="px-8 w-1/12" style={{ paddingTop: '8px', paddingBottom: '8px' }}>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -62,6 +76,11 @@ export function UsersPage() {
                       </span>
                     </div>
                   </div>
+                </td>
+                <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                  <button onClick={() => handleDeleteUser(u.id, u.name || 'Unknown')} className="p-2 text-muted hover:text-semantic-error hover:bg-semantic-error/10 rounded-md transition-colors" title="임직원 삭제">
+                    <Trash2 size={24} />
+                  </button>
                 </td>
               </tr>
             ))}
