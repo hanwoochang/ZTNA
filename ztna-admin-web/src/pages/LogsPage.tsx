@@ -15,7 +15,7 @@ export function LogsPage() {
         <h2 className="text-4xl font-bold text-ink">전체 접속 로그 감사 (Audit)</h2>
         <span className="text-muted text-xl font-bold">총 {logs.length}건 조회됨</span>
       </div>
-      <div className="overflow-x-auto p-4" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+      <div className="overflow-x-auto p-4">
         <table className="w-full text-left border-collapse">
           <thead style={{ position: 'sticky', top: 0, backgroundColor: '#ffffff', zIndex: 10 }}>
             <tr className="text-muted text-2xl uppercase font-bold border-b border-hairline">
