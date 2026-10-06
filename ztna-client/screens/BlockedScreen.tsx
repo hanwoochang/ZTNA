@@ -26,21 +26,21 @@ export const BlockedScreen = ({ handleLogout }: Props) => {
                 <Feather name="shield" size={60} color="#ffffff" />
             </View>
             
-            <Text style={{ fontSize: 26, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: '#ffffff' }}>
+            <Text style={{ fontSize: Platform.OS === 'web' ? 36 : 26, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: '#ffffff' }}>
                 기기 접근이 차단되었습니다
             </Text>
             
-            <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 40, lineHeight: 24, color: '#ffffff', opacity: 0.9 }}>
+            <Text style={{ fontSize: Platform.OS === 'web' ? 20 : 16, textAlign: 'center', marginBottom: 40, lineHeight: 24, color: '#ffffff', opacity: 0.9 }}>
                 보안 정책 위반 또는 무결성 검증 실패로 인해{'\n'}
                 사내망 접근이 즉시 차단되었습니다.
             </Text>
 
             <TouchableOpacity 
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12, width: '100%', backgroundColor: '#ffffff', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }} 
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12, width: '100%', maxWidth: 400, backgroundColor: '#ffffff', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }} 
                 onPress={doLogout}
                 activeOpacity={0.8}
             >
-                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#e53e3e' }}>안전하게 로그아웃</Text>
+                <Text style={{ fontSize: Platform.OS === 'web' ? 22 : 18, fontWeight: 'bold', color: '#e53e3e' }}>안전하게 로그아웃</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );
