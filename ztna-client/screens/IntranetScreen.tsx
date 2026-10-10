@@ -223,7 +223,7 @@ export const IntranetScreen = (props: Props) => {
                                 </Tab.Screen>
                             )}
                             <Tab.Screen name="Settings">
-                                {() => <SettingsTab {...props} styles={styles} colors={colors} />}
+                                {() => <SettingsTab {...props} {...intranet} styles={styles} colors={colors} />}
                             </Tab.Screen>
                         </Tab.Navigator>
                     </NavigationContainer>

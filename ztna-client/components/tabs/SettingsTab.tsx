@@ -9,7 +9,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Icon } from '../ui/Icon';
 
-export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, colors }: any) => {
+export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, userRole, userPositionLevel, styles, colors }: any) => {
     const { themeMode, setThemeMode } = useTheme();
     const [authMethod, setAuthMethod] = useState<'otp' | 'bio'>('otp');
 
@@ -43,6 +43,15 @@ export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, styles, 
                     <Text style={[styles.heading3, { marginBottom: 0 }]}>Identity</Text>
                 </View>
                 <Text style={styles.infoText}>Email: {email}</Text>
+                <Text style={styles.infoText}>Role: {userRole === 'ADMIN' ? '시스템 관리자' : '일반 사용자'}</Text>
+                <Text style={styles.infoText}>Position: {
+                    userPositionLevel === 1 ? '사원' :
+                    userPositionLevel === 2 ? '대리' :
+                    userPositionLevel === 3 ? '과장' :
+                    userPositionLevel === 4 ? '차장' :
+                    userPositionLevel === 5 ? '부장' :
+                    userPositionLevel === 6 ? '임원' : '알 수 없음'
+                } (Level {userPositionLevel})</Text>
                 <Text style={styles.infoText}>Device ID: {deviceId}</Text>
                 <Text style={styles.infoText}>IP Address: {ipAddress}</Text>
                 

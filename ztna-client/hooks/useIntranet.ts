@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
 import axios from 'axios';
 import * as Storage from '../utils/storage';
@@ -9,6 +9,8 @@ import { GATEWAY_URL } from '../constants/config';
 export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncAllowDownload?: (val: boolean) => void) => {
     const [isLoading, setIsLoading] = useState(false);
     const [attendanceData, setAttendanceData] = useState<{ check_in_time: string | null, check_out_time: string | null }>({ check_in_time: null, check_out_time: null });
+    const [userPositionLevel, setUserPositionLevel] = useState(1);
+    const [userRole, setUserRole] = useState('USER');
 
     const handleApiError = (error: any, defaultMessage: string, silent: boolean = false) => {
         if (error.response?.status === 401 && error.response?.data?.revoked) {
@@ -23,10 +25,24 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     };
 
     const handleSyncHeader = (response: any) => {
-        if (response?.headers && response.headers['x-allow-download-sync']) {
-            const isAllowed = response.headers['x-allow-download-sync'] === 'true';
-            Storage.setItemAsync('allowDownload', String(isAllowed));
-            if (syncAllowDownload) syncAllowDownload(isAllowed);
+        if (response?.headers) {
+            if (response.headers['x-allow-download-sync']) {
+                const isAllowed = response.headers['x-allow-download-sync'] === 'true';
+                Storage.setItemAsync('allowDownload', String(isAllowed));
+                if (syncAllowDownload) syncAllowDownload(isAllowed);
+            }
+            if (response.headers['x-user-position-level-sync']) {
+                const pos = parseInt(response.headers['x-user-position-level-sync']);
+                if (!isNaN(pos)) {
+                    setUserPositionLevel(pos);
+                    Storage.setItemAsync('user_position_level', String(pos));
+                }
+            }
+            if (response.headers['x-user-role-sync']) {
+                const r = response.headers['x-user-role-sync'];
+                setUserRole(r);
+                Storage.setItemAsync('user_role', r);
+            }
         }
     };
 
@@ -105,6 +121,22 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         }
     };
 
+    const deleteDocument = async (id: number) => {
+        setIsLoading(true);
+        try {
+            const headers = await getAuthHeader();
+            const response = await axios.delete(`${GATEWAY_URL}/private/api/documents/${id}`, { headers });
+            Alert.alert('삭제 완료', response.data.message || '문서가 삭제되었습니다.');
+            await fetchDocuments();
+            return true;
+        } catch (error: any) {
+            handleApiError(error, '문서 삭제 권한이 없습니다.');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const downloadDocument = async (id: number, filename: string) => {
         setIsLoading(true);
         try {
@@ -155,8 +187,6 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     };
 
     const [notices, setNotices] = useState<any[]>([]);
-    const [userPositionLevel, setUserPositionLevel] = useState(1);
-    const [userRole, setUserRole] = useState('USER');
     
     useEffect(() => {
         Storage.getItemAsync('user_position_level').then(val => {
@@ -267,6 +297,18 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         }
     };
 
+    const updateEvent = async (id: number, title: string, date: string) => {
+        try {
+            const headers = await getAuthHeader();
+            await axios.put(`${GATEWAY_URL}/private/api/events/${id}`, { title, date }, { headers });
+            await fetchEvents();
+            return true;
+        } catch (error: any) {
+            Alert.alert('수정 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            return false;
+        }
+    };
+
     const [employees, setEmployees] = useState<any[]>([]);
 
     const fetchEmployees = async () => {
@@ -282,9 +324,9 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     return { 
         isLoading, userPositionLevel, userRole,
         attendanceData, handleAttendance, fetchTodayAttendance,
-        documents, fetchDocuments, uploadDocument, downloadDocument,
+        documents, fetchDocuments, uploadDocument, downloadDocument, deleteDocument,
         notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice,
-        events, fetchEvents, createEvent, deleteEvent,
+        events, fetchEvents, createEvent, deleteEvent, updateEvent,
         employees, fetchEmployees
     };
 };

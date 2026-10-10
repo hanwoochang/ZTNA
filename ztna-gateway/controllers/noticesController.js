@@ -76,14 +76,16 @@ exports.updateNotice = async (req, res) => {
     const { title, content } = req.body;
     const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
+    const userPos = parseInt(req.headers['x-user-position-level'] || '1');
     
     try {
         const [rows] = await pool.query('SELECT * FROM notices WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
-        if (notice.author !== currentUser && !isAdminRole) {
-            return res.status(403).json({ message: '수정 권한이 없습니다 (작성자 본인만 가능).' });
+        // 과장(3) 이상은 남의 글도 수정 가능
+        if (notice.author !== currentUser && !isAdminRole && userPos < 3) {
+            return res.status(403).json({ message: '수정 권한이 없습니다 (본인 글이거나 과장 이상만 가능).' });
         }
 
         const updatedTitle = title || notice.title;
@@ -112,8 +114,9 @@ exports.deleteNotice = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
-        if (notice.author !== currentUser && !isAdminRole) {
-            return res.status(403).json({ message: '본인이 작성한 게시글만 삭제할 수 있습니다.' });
+        // 과장(3) 이상은 남의 글도 삭제 가능
+        if (notice.author !== currentUser && !isAdminRole && userPos < 3) {
+            return res.status(403).json({ message: '삭제 권한이 없습니다 (본인 글이거나 과장 이상만 가능).' });
         }
 
         await pool.query('DELETE FROM notices WHERE id = ?', [id]);

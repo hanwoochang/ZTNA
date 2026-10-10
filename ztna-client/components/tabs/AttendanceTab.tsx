@@ -124,7 +124,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                                             </View>
                                             <View>
                                                 <Text style={{ fontSize: Platform.OS === 'web' ? 18 : 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: Platform.OS === 'web' ? 16 : 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
-                                                <Text style={{ fontSize: Platform.OS === 'web' ? 16 : 12, color: colors.subText }}>{emp.department || '미배정'} · {emp.email}</Text>
+                                                <Text style={{ fontSize: Platform.OS === 'web' ? 16 : 12, color: colors.subText }}>{emp.department || '미배정'} / {emp.position || '사원'} · {emp.email}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -170,7 +170,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                         {employees?.map((emp: any) => (
                             <View key={emp.id} style={[styles.card, { marginBottom: 12 }]}>
                                 <Text style={[styles.heading3, { marginBottom: 4 }]}>{emp.name || '이름 미상'} <Text style={{fontSize: Platform.OS === 'web' ? 16 : 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
-                                <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서: {emp.department || '미배정'}</Text>
+                                <Text style={[styles.noticeMeta, { marginBottom: 2 }]}>부서/직급: {emp.department || '미배정'} / {emp.position || '사원'}</Text>
                                 <Text style={styles.infoText}>이메일: {emp.email}</Text>
                             </View>
                         ))}

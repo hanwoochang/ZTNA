@@ -69,8 +69,16 @@ const verifyToken = async (req, res, next) => {
             }
         }
 
+        // 실시간 사용자 직급 및 권한 DB 동기화 (토큰 재발급 없이도 즉시 반영)
+        const [freshUsers] = await pool.query('SELECT role, department, position_level FROM users WHERE id = ?', [decoded.userId]);
+        if (freshUsers.length > 0) {
+            decoded.role = freshUsers[0].role;
+            decoded.department = freshUsers[0].department;
+            decoded.position_level = freshUsers[0].position_level;
+        }
+
         req.user = decoded;
-        console.log(`[통과] ${req.user.email} 님이 내부망에 접근합니다.`);
+        console.log(`[통과] ${req.user.email} 님이 내부망에 접근합니다. (직급Lv: ${req.user.position_level}, 권한: ${req.user.role})`);
         next();
     } catch (error) {
         console.log('[차단 상세 이유]:', error.message); // 🌟 진짜 에러 이유를 출력하도록 수정!
@@ -86,6 +94,12 @@ app.use('/private', verifyToken, createProxyMiddleware({
         proxyRes: (proxyRes, req, res) => {
             if (req.user && req.user.allowDownload !== undefined) {
                 proxyRes.headers['x-allow-download-sync'] = req.user.allowDownload ? 'true' : 'false';
+            }
+            if (req.user && req.user.position_level !== undefined) {
+                proxyRes.headers['x-user-position-level-sync'] = String(req.user.position_level);
+            }
+            if (req.user && req.user.role !== undefined) {
+                proxyRes.headers['x-user-role-sync'] = String(req.user.role);
             }
         },
         proxyReq: (proxyReq, req, res) => {

@@ -6,6 +6,7 @@ const upload = require('../config/multer');
 router.get('/secret.pdf', documentsController.downloadSecretPdf);
 router.get('/', documentsController.getDocuments);
 router.post('/', upload.single('file'), documentsController.uploadDocument);
+router.delete('/:id', documentsController.deleteDocument);
 router.get('/:id/download', documentsController.downloadDocument);
 
 module.exports = router;

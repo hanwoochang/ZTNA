@@ -159,7 +159,7 @@ router.post('/login', loginLimiter, async (req, res) => {
                 deviceId: currentDevice?.device_identifier || deviceId,
                 allowDownload: true 
             }, process.env.JWT_SECRET, { expiresIn: '15m' });
-            return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload: true });
+            return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload: true, position_level: user.position_level, role: user.role });
         }
     } catch (error) {
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -244,7 +244,7 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
             allowDownload 
         }, process.env.JWT_SECRET, { expiresIn: '15m' });
         
-        res.json({ message: '2차 인증 성공!', token, allowDownload });
+        res.json({ message: '2차 인증 성공!', token, allowDownload, position_level: user.position_level, role: user.role });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });
@@ -301,7 +301,7 @@ router.post('/verify-bio', async (req, res) => {
             allowDownload 
         }, process.env.JWT_SECRET, { expiresIn: '15m' });
         
-        res.json({ message: '생체 인증 성공!', token, allowDownload });
+        res.json({ message: '생체 인증 성공!', token, allowDownload, position_level: user.position_level, role: user.role });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
         res.status(500).json({ message: '서버 에러', error: error.message });

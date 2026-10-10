@@ -123,6 +123,8 @@ export const useAuth = () => {
             } else {
                 await Storage.setItemAsync('jwt_token', loginResponse.data.token);
                 await Storage.setItemAsync('allowDownload', String(loginResponse.data.allowDownload));
+                await Storage.setItemAsync('user_position_level', String(loginResponse.data.position_level || 1));
+                await Storage.setItemAsync('user_role', loginResponse.data.role || 'USER');
                 testGatewayAccess(loginResponse.data.token);
             }
         } catch (error: any) {
@@ -206,6 +208,8 @@ export const useAuth = () => {
                 setShowOtpInput(false);
                 await Storage.setItemAsync('jwt_token', verifyResponse.data.token);
                 await Storage.setItemAsync('allowDownload', String(verifyResponse.data.allowDownload));
+                await Storage.setItemAsync('user_position_level', String(verifyResponse.data.position_level || 1));
+                await Storage.setItemAsync('user_role', verifyResponse.data.role || 'USER');
                 testGatewayAccess(verifyResponse.data.token);
             }
         } catch (error: any) {

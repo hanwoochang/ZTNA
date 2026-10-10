@@ -39,8 +39,6 @@ export function AddUserPopup() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '20px' }}>
             <div>
-              <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>부서</label>
-            <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>직급</label>
               <select value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
                 {['사원', '대리', '과장', '차장', '부장', '임원'].map(d => <option key={d} value={d}>{d}</option>)}
@@ -70,4 +68,3 @@ export function AddUserPopup() {
     </div>
   );
 }
-

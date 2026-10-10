@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Calendar } from 'react-native-calendars';
@@ -9,7 +9,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Icon } from '../ui/Icon';
 
-export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocument, downloadDocument, notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice, styles, colors, allowDownload }: any) => {
+export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uploadDocument, downloadDocument, deleteDocument, notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice, styles, colors, allowDownload, userRole, userPositionLevel }: any) => {
     useFocusEffect(
         useCallback(() => {
             fetchNotices(1);
@@ -89,7 +89,14 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
         return (
             <TouchableOpacity 
                 style={{ backgroundColor: colors.danger, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%', borderRadius: 24, marginLeft: 12 }} 
-                onPress={() => deleteNotice(id)}
+                onPress={() => {
+                    Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
+                        { text: '취소', style: 'cancel' },
+                        { text: '삭제', style: 'destructive', onPress: async () => {
+                            await deleteNotice(id);
+                        }}
+                    ]);
+                }}
             >
                 <Icon name="trash-2" size={24} color={colors.onPrimary} />
             </TouchableOpacity>
@@ -143,25 +150,49 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                                 <SkeletonLoader height={24} width="70%" />
                             </View>
                         ) : (
-                            documents?.map((doc: any) => (
-                                <View key={doc.id} style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
-                                    <Text style={[styles.infoText, { fontWeight: '700', fontSize: 18, marginBottom: 4 }]} numberOfLines={2}>{doc.title}</Text>
-                                    <Text style={[styles.noticeMeta, { marginBottom: 16 }]} numberOfLines={2}>{doc.description}</Text>
-                                    <View style={{ flex: 1 }} />
-                                    <Text style={[styles.noticeMeta, { marginBottom: 12 }]}>{doc.original_name}</Text>
-                                    <TouchableOpacity 
-                                        style={[styles.buttonOutline, { marginBottom: 0, flexDirection: 'row', justifyContent: 'center', opacity: allowDownload ? 1 : 0.5 }]} 
-                                        onPress={() => downloadDocument(doc.id, doc.original_name)} 
-                                        disabled={isLoading || !allowDownload}
-                                    >
-                                        <Icon name={allowDownload ? "download" : "lock"} size={16} color={colors.text} style={{ marginRight: 8 }} />
-                                        <Text style={styles.buttonOutlineText}>{allowDownload ? 'Download PDF' : 'Download Disabled'}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ))
+                            documents?.map((doc: any) => {
+                                const canManageDocs = userRole === 'ADMIN' || userPositionLevel >= 3;
+                                return (
+                                    <View key={doc.id} style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <View style={{ flex: 1, marginRight: 8 }}>
+                                                <Text style={[styles.infoText, { fontWeight: '700', fontSize: 18, marginBottom: 4 }]} numberOfLines={2}>{doc.title}</Text>
+                                                <Text style={[styles.noticeMeta, { marginBottom: 16 }]} numberOfLines={2}>{doc.description}</Text>
+                                            </View>
+                                            {canManageDocs && (
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        if (Platform.OS === 'web') {
+                                                            if (window.confirm('기밀 문서를 삭제하시겠습니까?')) deleteDocument(doc.id);
+                                                        } else {
+                                                            Alert.alert('기밀 문서 삭제', '정말 삭제하시겠습니까?', [
+                                                                { text: '취소', style: 'cancel' },
+                                                                { text: '삭제', style: 'destructive', onPress: () => deleteDocument(doc.id) }
+                                                            ]);
+                                                        }
+                                                    }} 
+                                                    style={{ padding: 8, backgroundColor: colors.danger + '20', borderRadius: 8 }}
+                                                >
+                                                    <Icon name="trash-2" size={18} color={colors.danger} />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1 }} />
+                                        <Text style={[styles.noticeMeta, { marginBottom: 12 }]}>{doc.original_name}{doc.author ? ` · 등록자: ${doc.author}` : ''}</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.buttonOutline, { marginBottom: 0, flexDirection: 'row', justifyContent: 'center', opacity: allowDownload ? 1 : 0.5 }]} 
+                                            onPress={() => downloadDocument(doc.id, doc.original_name)} 
+                                            disabled={isLoading || !allowDownload}
+                                        >
+                                            <Icon name={allowDownload ? "download" : "lock"} size={16} color={colors.text} style={{ marginRight: 8 }} />
+                                            <Text style={styles.buttonOutlineText}>{allowDownload ? 'Download PDF' : 'Download Disabled'}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                );
+                            })
                         )}
                         
-                        {allowDownload && (
+                        {allowDownload && (userRole === 'ADMIN' || userPositionLevel >= 3) && (
                             <TouchableOpacity 
                                 style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.borderSoft, backgroundColor: 'transparent' }]}
                                 onPress={() => setUploadModalVisible(true)}
@@ -170,7 +201,7 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                                     <Icon name="plus" size={24} color={colors.onPrimary} />
                                 </View>
                                 <Text style={[styles.infoText, { fontWeight: 'bold' }]}>새 문서 업로드</Text>
-                                <Text style={styles.noticeMeta}>CORPORATE 전용</Text>
+                                <Text style={styles.noticeMeta}>과장 이상 / CORPORATE 전용</Text>
                             </TouchableOpacity>
                         )}
                     </ScrollView>
@@ -200,41 +231,47 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
             </View>
 
             {notices.map((notice: any) => {
-                const isAuthor = notice.author === currentUserHandle || currentUserHandle === '보안팀' || currentUserHandle === '인사팀';
+                const isAuthor = userRole === 'ADMIN' || userPositionLevel >= 3 || (userPositionLevel >= 2 && notice.author === currentUserHandle);
                 const CardContent = (
-                    <TouchableOpacity style={[styles.card, { flexDirection: 'row', alignItems: 'center', marginBottom: 0 }]} onPress={() => { 
+                    <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', marginBottom: Platform.OS === 'web' ? 12 : 0, padding: 0 }]}>
+                                <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: 16 }} onPress={() => { 
                         setSelectedNotice(notice); 
                         setEditTitle(notice.title);
                         setEditContent(notice.content);
                         setIsEditing(false);
                         setDetailVisible(true); 
                     }}>
-                        <Icon name="file-text" size={24} color={colors.subText} style={{ marginRight: 16 }} />
+                                    <Icon name="file-text" size={24} color={colors.subText} style={{ marginRight: 16 }} />
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.infoText, { fontWeight: '700', marginBottom: 4 }]} numberOfLines={1}>{notice.title}</Text>
                             <Text style={[styles.infoText, { color: colors.subText, fontSize: 13, marginBottom: 0 }]} numberOfLines={1}>
                                 {notice.author} • {notice.date}{notice.is_edited ? ' (수정됨)' : ''}
                             </Text>
                         </View>
-                        {isDesktop && isAuthor && (
-                            <TouchableOpacity 
-                                style={{ padding: 12, backgroundColor: colors.danger + '20', borderRadius: 12, marginLeft: 12 }} 
-                                onPress={(e) => { e.stopPropagation(); deleteNotice(notice.id); }}
-                            >
-                                <Icon name="trash-2" size={18} color={colors.danger} />
-                            </TouchableOpacity>
-                        )}
-                    </TouchableOpacity>
+                                </TouchableOpacity>
+                                {isAuthor && (
+                                    <TouchableOpacity 
+                                        style={{ padding: 12, borderRadius: 12, marginRight: 16 }}
+                                        onPress={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (Platform.OS === 'web') {
+                                                if (window.confirm('정말 삭제하시겠습니까?')) deleteNotice(notice.id);
+                                            } else {
+                                                Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
+                                                    { text: '취소', style: 'cancel' },
+                                                    { text: '삭제', style: 'destructive', onPress: () => deleteNotice(notice.id) }
+                                                ]);
+                                            }
+                                        }}
+                                    >
+                                        <Icon name="trash-2" size={20} color={colors.danger} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                 );
                 return (
                     <View key={notice.id} style={{ marginBottom: 12 }}>
-                        {!isDesktop && isAuthor ? (
-                            <Swipeable renderRightActions={() => renderRightActions(notice.id)}>
-                                {CardContent}
-                            </Swipeable>
-                        ) : (
-                            CardContent
-                        )}
+                        {CardContent}
                     </View>
                 );
             })}
@@ -282,40 +319,25 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                         <Text style={styles.heading2}>New Notice</Text>
                         <TextInput style={styles.input} placeholder="Title" placeholderTextColor={colors.subText} value={newTitle} onChangeText={setNewTitle} />
                         <TextInput style={[styles.input, { height: 120, textAlignVertical: 'top' }]} placeholder="Content" placeholderTextColor={colors.subText} multiline value={newContent} onChangeText={setNewContent} />
-                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>조회 부서</Text>
-                                <View style={{ backgroundColor: colors.field, borderRadius: 16, overflow: 'hidden' }}>
-                                    <select 
-                                        value={targetDept} 
-                                        onChange={(e: any) => setTargetDept(e.target.value)} 
-                                        style={{ width: '100%', padding: '12px 16px', backgroundColor: 'transparent', color: colors.text, border: 'none', outline: 'none', fontSize: 16 }}
-                                    >
-                                        <option value="ALL">전체 부서</option>
-                                        <option value="일반부서">일반부서</option>
-                                        <option value="재무팀">재무팀</option>
-                                        <option value="인사팀">인사팀</option>
-                                        <option value="보안팀">보안팀</option>
-                                    </select>
-                                </View>
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>최소 직급</Text>
-                                <View style={{ backgroundColor: colors.field, borderRadius: 16, overflow: 'hidden' }}>
-                                    <select 
-                                        value={targetPos} 
-                                        onChange={(e: any) => setTargetPos(parseInt(e.target.value))} 
-                                        style={{ width: '100%', padding: '12px 16px', backgroundColor: 'transparent', color: colors.text, border: 'none', outline: 'none', fontSize: 16 }}
-                                    >
-                                        <option value={1}>제한 없음 (사원)</option>
-                                        <option value={2}>대리 이상</option>
-                                        <option value={3}>과장 이상</option>
-                                        <option value={4}>차장 이상</option>
-                                        <option value={5}>부장 이상</option>
-                                        <option value={6}>임원 전용</option>
-                                    </select>
-                                </View>
-                            </View>
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>조회 가능 부서</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                                {['ALL', '일반부서', '재무팀', '인사팀', '보안팀'].map(d => (
+                                    <TouchableOpacity key={d} onPress={() => setTargetDept(d)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: targetDept === d ? colors.accent : colors.field, marginRight: 8 }}>
+                                        <Text style={{ color: targetDept === d ? colors.onPrimary : colors.text, fontWeight: 'bold' }}>{d === 'ALL' ? '전체 부서' : d}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>조회 가능 직급</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                                {[{l:1, n:'제한 없음'}, {l:2, n:'대리 이상'}, {l:3, n:'과장 이상'}, {l:4, n:'차장 이상'}, {l:5, n:'부장 이상'}, {l:6, n:'임원 전용'}].map(p => (
+                                    <TouchableOpacity key={p.l} onPress={() => setTargetPos(p.l)} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: targetPos === p.l ? colors.accent : colors.field, marginRight: 8 }}>
+                                        <Text style={{ color: targetPos === p.l ? colors.onPrimary : colors.text, fontWeight: 'bold' }}>{p.n}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                         <TouchableOpacity style={[styles.button, { flexDirection: 'row', justifyContent: 'center' }]} onPress={handleCreate}>
                             <Icon name="check-circle" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
@@ -339,19 +361,26 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.heading2}>{selectedNotice?.title}</Text>
                                     </View>
-                                    {(userRole === 'ADMIN' || (userPositionLevel >= 2 && selectedNotice?.author === currentUserHandle)) && (
+                                    {(userRole === 'ADMIN' || userPositionLevel >= 3 || (userPositionLevel >= 2 && selectedNotice?.author === currentUserHandle)) && (
                                         <View style={{ flexDirection: 'row' }}>
                                             <TouchableOpacity onPress={() => setIsEditing(true)} style={{ padding: 4, marginLeft: 8 }}>
                                                 <Icon name="edit-2" size={20} color={colors.accent} />
                                             </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => {
-                                                Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
-                                                    { text: '취소', style: 'cancel' },
-                                                    { text: '삭제', style: 'destructive', onPress: async () => {
+                                            <TouchableOpacity onPress={async () => {
+                                                if (Platform.OS === 'web') {
+                                                    if (window.confirm('정말 삭제하시겠습니까?')) {
                                                         const success = await deleteNotice(selectedNotice.id);
                                                         if (success) setDetailVisible(false);
-                                                    }}
-                                                ]);
+                                                    }
+                                                } else {
+                                                    Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
+                                                        { text: '취소', style: 'cancel' },
+                                                        { text: '삭제', style: 'destructive', onPress: async () => {
+                                                            const success = await deleteNotice(selectedNotice.id);
+                                                            if (success) setDetailVisible(false);
+                                                        }}
+                                                    ]);
+                                                }
                                             }} style={{ padding: 4, marginLeft: 8 }}>
                                                 <Icon name="trash-2" size={20} color={colors.danger} />
                                             </TouchableOpacity>

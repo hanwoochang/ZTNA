@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Calendar } from 'react-native-calendars';
@@ -9,7 +9,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Icon } from '../ui/Icon';
 
-export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, styles, colors }: any) => {
+export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEvent, updateEvent, userRole, userPositionLevel, styles, colors }: any) => {
     useFocusEffect(
         useCallback(() => {
             fetchEvents();
@@ -19,6 +19,8 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
     const todayStr = new Date().toISOString().split('T')[0];
     const [selectedDate, setSelectedDate] = useState<string>(todayStr);
     const [newEventTitle, setNewEventTitle] = useState('');
+    const [editingEvent, setEditingEvent] = useState<any>(null);
+    const [editEventTitle, setEditEventTitle] = useState('');
 
     const groupedEvents = (events || []).reduce((acc: any, ev: any) => {
         if (!acc[ev.date]) acc[ev.date] = [];
@@ -51,6 +53,17 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
         const success = await createEvent(newEventTitle, selectedDate);
         if (success) setNewEventTitle('');
     };
+
+    const handleSaveEdit = async () => {
+        if (!editingEvent || !editEventTitle.trim()) return;
+        const success = await updateEvent(editingEvent.id, editEventTitle, editingEvent.date);
+        if (success) {
+            setEditingEvent(null);
+            setEditEventTitle('');
+        }
+    };
+
+    const canManageEvents = userRole === 'ADMIN' || userPositionLevel >= 3;
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
@@ -100,14 +113,40 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                                 const isAuthor = ev.author === currentUserHandle || currentUserHandle === '관리자';
                                 return (
                                     <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSoft }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginRight: 12 }} />
-                                            <Text style={styles.infoText}>{ev.title}</Text>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.infoText}>{ev.title}</Text>
+                                                {ev.author && <Text style={{ fontSize: 12, color: colors.subText }}>작성자: {ev.author}</Text>}
+                                            </View>
                                         </View>
-                                        {isAuthor && (
-                                            <TouchableOpacity onPress={() => deleteEvent(ev.id)} style={{ padding: 8 }}>
-                                                <Icon name="trash-2" size={18} color={colors.danger} />
-                                            </TouchableOpacity>
+                                        {canManageEvents && (
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        setEditingEvent(ev);
+                                                        setEditEventTitle(ev.title);
+                                                    }} 
+                                                    style={{ padding: 8 }}
+                                                >
+                                                    <Icon name="edit-2" size={18} color={colors.accent} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        if (Platform.OS === 'web') {
+                                                            if (window.confirm('일정을 삭제하시겠습니까?')) deleteEvent(ev.id);
+                                                        } else {
+                                                            Alert.alert('일정 삭제', '정말 삭제하시겠습니까?', [
+                                                                { text: '취소', style: 'cancel' },
+                                                                { text: '삭제', style: 'destructive', onPress: () => deleteEvent(ev.id) }
+                                                            ]);
+                                                        }
+                                                    }} 
+                                                    style={{ padding: 8, marginLeft: 4 }}
+                                                >
+                                                    <Icon name="trash-2" size={18} color={colors.danger} />
+                                                </TouchableOpacity>
+                                            </View>
                                         )}
                                     </View>
                                 );
@@ -131,6 +170,35 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                     </View>
                 </View>
             )}
+
+            {/* 일정 수정 모달 */}
+            <Modal visible={!!editingEvent} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { maxWidth: 450, width: '100%', alignSelf: 'center' }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={styles.heading2}>일정 수정</Text>
+                            <TouchableOpacity onPress={() => setEditingEvent(null)} style={{ padding: 4 }}>
+                                <Icon name="x" size={20} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <TextInput 
+                            style={[styles.input, { marginBottom: 20 }]} 
+                            placeholder="일정 제목" 
+                            placeholderTextColor={colors.subText}
+                            value={editEventTitle} 
+                            onChangeText={setEditEventTitle} 
+                        />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity style={[styles.buttonOutline, { flex: 1, justifyContent: 'center' }]} onPress={() => setEditingEvent(null)}>
+                                <Text style={styles.buttonOutlineText}>취소</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.button, { flex: 1, justifyContent: 'center' }]} onPress={handleSaveEdit}>
+                                <Text style={styles.buttonText}>저장</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 };

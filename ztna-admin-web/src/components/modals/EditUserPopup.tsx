@@ -40,14 +40,11 @@ export function EditUserPopup() {
             <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>이메일</label>
             <input type="email" placeholder="이메일 주소" required value={formData.email} disabled readOnly className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }} />
           </div>
-          
           <div>
             <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>이름</label>
             <input type="text" placeholder="실명" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px' }}>
-            <div>
-              <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>부서</label>
             <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>직급</label>
               <select value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
@@ -60,8 +57,6 @@ export function EditUserPopup() {
                 {['일반부서', '재무팀', '인사팀', '보안팀'].map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>권한 (Role)</label>
             <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>계정 상태</label>
               <select value={formData.is_active} onChange={e => setFormData({ ...formData, is_active: parseInt(e.target.value) })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
@@ -87,4 +82,3 @@ export function EditUserPopup() {
     </div>
   );
 }
-

@@ -18,6 +18,12 @@ exports.uploadDocument = async (req, res) => {
         return res.status(403).json({ message: 'BYOD 기기에서는 기밀 문서를 업로드할 수 없습니다.' });
     }
 
+    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
+    const userPos = parseInt(req.headers['x-user-position-level'] || '1');
+    if (!isAdminRole && userPos < 3) {
+        return res.status(403).json({ message: '기밀 문서 업로드 권한이 없습니다 (과장 이상만 가능).' });
+    }
+
     const { title, description } = req.body;
     const author = req.headers['x-user-email']?.split('@')[0] || '익명';
     
@@ -33,6 +39,33 @@ exports.uploadDocument = async (req, res) => {
         res.json({ message: '문서가 성공적으로 업로드되었습니다.' });
     } catch (err) {
         res.status(500).json({ message: '문서 업로드 실패' });
+    }
+};
+
+exports.deleteDocument = async (req, res) => {
+    const id = parseInt(req.params.id);
+    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
+    const userPos = parseInt(req.headers['x-user-position-level'] || '1');
+
+    // 과장(3) 이상 또는 ADMIN만 기밀 문서 삭제 가능
+    if (!isAdminRole && userPos < 3) {
+        return res.status(403).json({ message: '기밀 문서 삭제 권한이 없습니다 (과장 이상만 가능).' });
+    }
+
+    try {
+        const [rows] = await pool.query('SELECT filename FROM intranet_documents WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: '문서를 찾을 수 없습니다.' });
+
+        const filename = rows[0].filename;
+        const filePath = path.join(__dirname, '..', 'uploads', filename);
+        if (fs.existsSync(filePath)) {
+            try { fs.unlinkSync(filePath); } catch (e) { console.error('파일 삭제 실패:', e.message); }
+        }
+
+        await pool.query('DELETE FROM intranet_documents WHERE id = ?', [id]);
+        res.json({ message: '기밀 문서가 삭제되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ message: '문서 삭제 실패' });
     }
 };
 

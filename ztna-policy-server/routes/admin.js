@@ -69,7 +69,7 @@ router.get('/users', async (req, res) => {
     try {
         const [users] = await pool.query(`
             SELECT 
-                u.id, u.email, u.role, u.department, u.name, u.is_active, u.created_at,
+                u.id, u.email, u.role, u.department, u.position, u.position_level, u.name, u.is_active, u.created_at,
                 IFNULL((
                     SELECT risk_score 
                     FROM access_logs 
@@ -112,7 +112,14 @@ router.post('/users', async (req, res) => {
 // 2-2. 임직원 정보 수정 (PUT)
 router.put('/users/:id', async (req, res) => {
     try {
-        const { name, department, position, position_level, role, is_active } = req.body;
+        let { name, department, position, position_level, role, is_active } = req.body;
+        
+        // 보안관리자(ADMIN)는 최고 직급(임원)으로 강제 고정
+        if (role === 'ADMIN') {
+            position = '임원';
+            position_level = 6;
+        }
+        
         const [result] = await pool.query(
             'UPDATE users SET name = ?, department = ?, position = ?, position_level = ?, role = ?, is_active = ? WHERE id = ?',
             [name, department, position, position_level, role, is_active, req.params.id]
