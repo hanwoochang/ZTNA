@@ -153,7 +153,8 @@ router.post('/login', loginLimiter, async (req, res) => {
                 userId: user.id, 
                 email: user.email, 
                 role: user.role, 
-                department: user.department, 
+                department: user.department,
+                position_level: user.position_level, 
                 jti: randomUUID(),
                 deviceId: currentDevice?.device_identifier || deviceId,
                 allowDownload: true 
@@ -236,7 +237,8 @@ router.post('/verify-otp', otpLimiter, async (req, res) => {
             userId: user.id, 
             email: user.email, 
             role: user.role, 
-            department: user.department, 
+            department: user.department,
+                position_level: user.position_level, 
             jti: randomUUID(),
             deviceId,
             allowDownload 
@@ -292,7 +294,8 @@ router.post('/verify-bio', async (req, res) => {
             userId: user.id, 
             email: user.email, 
             role: user.role, 
-            department: user.department, 
+            department: user.department,
+                position_level: user.position_level, 
             jti: randomUUID(),
             deviceId,
             allowDownload 
@@ -342,7 +345,8 @@ router.post('/admin-login', loginLimiter, async (req, res) => {
         loginLimiter.resetKey(ipAddress);
 
         const token = jwt.sign(
-            { userId: user.id, email: user.email, role: user.role, department: user.department, jti: randomUUID() },
+            { userId: user.id, email: user.email, role: user.role, department: user.department,
+                position_level: user.position_level, jti: randomUUID() },
             process.env.JWT_SECRET,
             { expiresIn: '15m' }
         );

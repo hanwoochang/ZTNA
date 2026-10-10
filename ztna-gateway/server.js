@@ -95,6 +95,8 @@ app.use('/private', verifyToken, createProxyMiddleware({
                 proxyReq.setHeader('x-user-email', req.user.email);
                 // 클라이언트 위조 방지를 위해 값이 없어도 항상 덮어씀
                 proxyReq.setHeader('x-user-role', req.user.role || 'NONE');
+                proxyReq.setHeader('x-user-department', encodeURIComponent(req.user.department || 'ALL'));
+                proxyReq.setHeader('x-user-position-level', req.user.position_level || '1');
                 proxyReq.setHeader('x-allow-download', req.user.allowDownload ? 'true' : 'false');
             }
         }

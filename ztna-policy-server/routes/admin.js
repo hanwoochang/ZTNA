@@ -90,15 +90,15 @@ const bcrypt = require('bcrypt');
 
 // 2-1. 신규 유저(임직원) 생성 API
 router.post('/users', async (req, res) => {
-    const { email, password, name, department, role } = req.body;
+    const { email, password, name, department, role, position, position_level } = req.body;
     if (!email || !password || !name) {
         return res.status(400).json({ message: '필수 정보(이메일, 비밀번호, 이름)가 누락되었습니다.' });
     }
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
-            'INSERT INTO users (email, password_hash, name, department, role, is_active) VALUES (?, ?, ?, ?, ?, 1)',
-            [email, hashedPassword, name, department || '일반부서', role || 'USER']
+            'INSERT INTO users (email, password_hash, name, department, position, position_level, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+            [email, hashedPassword, name, department || '일반부서', position || '사원', position_level || 1, role || 'USER']
         );
         res.json({ message: '임직원 계정이 성공적으로 생성되었습니다.' });
     } catch (error) {
@@ -109,7 +109,22 @@ router.post('/users', async (req, res) => {
     }
 });
 
-// 2-2. 임직원 완전 삭제 (DELETE)
+// 2-2. 임직원 정보 수정 (PUT)
+router.put('/users/:id', async (req, res) => {
+    try {
+        const { name, department, position, position_level, role, is_active } = req.body;
+        const [result] = await pool.query(
+            'UPDATE users SET name = ?, department = ?, position = ?, position_level = ?, role = ?, is_active = ? WHERE id = ?',
+            [name, department, position, position_level, role, is_active, req.params.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+        res.json({ message: '임직원 정보가 수정되었습니다.' });
+    } catch (error) {
+        res.status(500).json({ message: '임직원 정보 수정 실패', error: error.message });
+    }
+});
+
+// 2-3. 임직원 완전 삭제 (DELETE)
 router.delete('/users/:id', async (req, res) => {
     try {
         const userId = req.params.id;

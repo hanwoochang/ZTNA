@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Trash2 } from 'lucide-react';
+import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Trash2, Edit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import api from '../api';
 
@@ -49,7 +49,7 @@ export function UsersPage() {
               <th className="pl-14 pr-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이름</th>
               <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>이메일</th>
               <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>권한</th>
-              <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서</th>
+              <th className="px-8 w-1/6" style={{ paddingTop: '8px', paddingBottom: '8px' }}>부서/직급</th>
               <th className="px-8 w-1/4" style={{ paddingTop: '8px', paddingBottom: '8px' }}>상태 및 현재 위험도</th>
               <th className="px-8 w-1/12" style={{ paddingTop: '8px', paddingBottom: '8px' }}>관리</th>
             </tr>
@@ -62,7 +62,7 @@ export function UsersPage() {
                 <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <span className="text-2xl font-bold tracking-wide uppercase" style={{ color: u.role === 'ADMIN' ? '#f54e00' : '#26251e' }}>{u.role}</span>
                 </td>
-                <td className="px-8 text-body font-medium" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.department}</td>
+                <td className="px-8 text-body font-medium" style={{ paddingTop: '8px', paddingBottom: '8px' }}>{u.department} / <span className="text-ink font-bold">{u.position || '사원'}</span></td>
                 <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
                   <div className="flex flex-col gap-1 py-2">
                     <div className="flex items-center gap-2">
@@ -78,6 +78,9 @@ export function UsersPage() {
                   </div>
                 </td>
                 <td className="px-8" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                  <button onClick={() => window.open(`/users/edit/${u.id}`, 'EditUser', 'width=650,height=800,left=250,top=150')} className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="임직원 정보 수정">
+                    <Edit size={24} />
+                  </button>
                   <button onClick={() => handleDeleteUser(u.id, u.name || 'Unknown')} className="p-2 text-muted hover:text-semantic-error hover:bg-semantic-error/10 rounded-md transition-colors" title="임직원 삭제">
                     <Trash2 size={24} />
                   </button>

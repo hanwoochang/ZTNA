@@ -28,6 +28,8 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
     const [selectedNotice, setSelectedNotice] = useState<any>(null);
     const [newTitle, setNewTitle] = useState('');
     const [newContent, setNewContent] = useState('');
+    const [targetDept, setTargetDept] = useState('ALL');
+    const [targetPos, setTargetPos] = useState(1);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState('');
@@ -64,11 +66,13 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
     };
 
     const handleCreate = async () => {
-        const success = await createNotice(newTitle, newContent);
+        const success = await createNotice(newTitle, newContent, targetDept, targetPos);
         if (success) {
             setModalVisible(false);
             setNewTitle('');
             setNewContent('');
+            setTargetDept('ALL');
+            setTargetPos(1);
         }
     };
 
@@ -278,6 +282,41 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                         <Text style={styles.heading2}>New Notice</Text>
                         <TextInput style={styles.input} placeholder="Title" placeholderTextColor={colors.subText} value={newTitle} onChangeText={setNewTitle} />
                         <TextInput style={[styles.input, { height: 120, textAlignVertical: 'top' }]} placeholder="Content" placeholderTextColor={colors.subText} multiline value={newContent} onChangeText={setNewContent} />
+                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>조회 부서</Text>
+                                <View style={{ backgroundColor: colors.field, borderRadius: 16, overflow: 'hidden' }}>
+                                    <select 
+                                        value={targetDept} 
+                                        onChange={(e: any) => setTargetDept(e.target.value)} 
+                                        style={{ width: '100%', padding: '12px 16px', backgroundColor: 'transparent', color: colors.text, border: 'none', outline: 'none', fontSize: 16 }}
+                                    >
+                                        <option value="ALL">전체 부서</option>
+                                        <option value="일반부서">일반부서</option>
+                                        <option value="재무팀">재무팀</option>
+                                        <option value="인사팀">인사팀</option>
+                                        <option value="보안팀">보안팀</option>
+                                    </select>
+                                </View>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: colors.subText, marginBottom: 8, fontSize: 14 }}>최소 직급</Text>
+                                <View style={{ backgroundColor: colors.field, borderRadius: 16, overflow: 'hidden' }}>
+                                    <select 
+                                        value={targetPos} 
+                                        onChange={(e: any) => setTargetPos(parseInt(e.target.value))} 
+                                        style={{ width: '100%', padding: '12px 16px', backgroundColor: 'transparent', color: colors.text, border: 'none', outline: 'none', fontSize: 16 }}
+                                    >
+                                        <option value={1}>제한 없음 (사원)</option>
+                                        <option value={2}>대리 이상</option>
+                                        <option value={3}>과장 이상</option>
+                                        <option value={4}>차장 이상</option>
+                                        <option value={5}>부장 이상</option>
+                                        <option value={6}>임원 전용</option>
+                                    </select>
+                                </View>
+                            </View>
+                        </View>
                         <TouchableOpacity style={[styles.button, { flexDirection: 'row', justifyContent: 'center' }]} onPress={handleCreate}>
                             <Icon name="check-circle" size={20} color={colors.onPrimary} style={{ marginRight: 8 }} />
                             <Text style={styles.buttonText}>Post</Text>
@@ -300,10 +339,23 @@ export const DocumentsTab = ({ email, isLoading, documents, fetchDocuments, uplo
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.heading2}>{selectedNotice?.title}</Text>
                                     </View>
-                                    {(selectedNotice?.author === currentUserHandle || currentUserHandle === '보안팀' || currentUserHandle === '인사팀') && (
-                                        <TouchableOpacity onPress={() => setIsEditing(true)} style={{ padding: 4, marginLeft: 8 }}>
-                                            <Icon name="edit-2" size={20} color={colors.accent} />
-                                        </TouchableOpacity>
+                                    {(userRole === 'ADMIN' || (userPositionLevel >= 2 && selectedNotice?.author === currentUserHandle)) && (
+                                        <View style={{ flexDirection: 'row' }}>
+                                            <TouchableOpacity onPress={() => setIsEditing(true)} style={{ padding: 4, marginLeft: 8 }}>
+                                                <Icon name="edit-2" size={20} color={colors.accent} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => {
+                                                Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
+                                                    { text: '취소', style: 'cancel' },
+                                                    { text: '삭제', style: 'destructive', onPress: async () => {
+                                                        const success = await deleteNotice(selectedNotice.id);
+                                                        if (success) setDetailVisible(false);
+                                                    }}
+                                                ]);
+                                            }} style={{ padding: 4, marginLeft: 8 }}>
+                                                <Icon name="trash-2" size={20} color={colors.danger} />
+                                            </TouchableOpacity>
+                                        </View>
                                     )}
                                 </View>
                                 <Text style={[styles.noticeMeta, { marginBottom: 24 }]}>{selectedNotice?.author} • {selectedNotice?.date}{selectedNotice?.is_edited ? ' (수정됨)' : ''}</Text>

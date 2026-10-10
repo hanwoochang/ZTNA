@@ -155,6 +155,17 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     };
 
     const [notices, setNotices] = useState<any[]>([]);
+    const [userPositionLevel, setUserPositionLevel] = useState(1);
+    const [userRole, setUserRole] = useState('USER');
+    
+    useEffect(() => {
+        Storage.getItemAsync('user_position_level').then(val => {
+            if (val) setUserPositionLevel(parseInt(val));
+        });
+        Storage.getItemAsync('user_role').then(val => {
+            if (val) setUserRole(val);
+        });
+    }, []);
     const [noticePage, setNoticePage] = useState(1);
     const [noticeTotalPages, setNoticeTotalPages] = useState(1);
 
@@ -172,11 +183,11 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         }
     };
 
-    const createNotice = async (title: string, content: string) => {
+    const createNotice = async (title: string, content: string, target_department: string = 'ALL', target_position_level: number = 1) => {
         setIsLoading(true);
         try {
             const headers = await getAuthHeader();
-            const response = await axios.post(`${GATEWAY_URL}/private/api/notices`, { title, content }, { headers });
+            const response = await axios.post(`${GATEWAY_URL}/private/api/notices`, { title, content, target_department, target_position_level }, { headers });
             Alert.alert('등록 완료', response.data.message);
             await fetchNotices(1);
             return true;
@@ -269,7 +280,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     };
 
     return { 
-        isLoading, 
+        isLoading, userPositionLevel, userRole,
         attendanceData, handleAttendance, fetchTodayAttendance,
         documents, fetchDocuments, uploadDocument, downloadDocument,
         notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice,

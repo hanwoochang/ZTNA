@@ -11,6 +11,7 @@ import { DevicesPage } from './pages/DevicesPage';
 import { LogsPage } from './pages/LogsPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AddUserPopup } from './components/modals/AddUserPopup';
+import { EditUserPopup } from './components/modals/EditUserPopup';
 
 // -- [App Router] --
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardLayout><Overview /></DashboardLayout>} />
         <Route path="/users" element={<DashboardLayout><UsersPage /></DashboardLayout>} />
         <Route path="/users/add" element={<AddUserPopup />} />
+        <Route path="/users/edit/:id" element={<EditUserPopup />} />
         <Route path="/devices" element={<DashboardLayout><DevicesPage /></DashboardLayout>} />
           <Route path="/logs" element={<DashboardLayout><LogsPage /></DashboardLayout>} />
         <Route path="*" element={<LoginPage />} />
