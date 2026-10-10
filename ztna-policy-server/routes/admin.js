@@ -111,6 +111,10 @@ router.post('/users', async (req, res) => {
 
 // 2-2. 임직원 정보 수정 (PUT)
 router.put('/users/:id', async (req, res) => {
+    // 자기 자신의 계정은 수정 불가 (실수로 인한 권한 강등/비활성화 방지)
+    if (req.user.userId === parseInt(req.params.id)) {
+        return res.status(403).json({ message: '자신의 계정은 수정할 수 없습니다.' });
+    }
     try {
         let { name, department, position, position_level, role, is_active } = req.body;
         
@@ -133,6 +137,10 @@ router.put('/users/:id', async (req, res) => {
 
 // 2-3. 임직원 완전 삭제 (DELETE)
 router.delete('/users/:id', async (req, res) => {
+    // 자기 자신의 계정은 삭제 불가 (어드민 계정 소멸로 인한 시스템 잠김 방지)
+    if (req.user.userId === parseInt(req.params.id)) {
+        return res.status(403).json({ message: '자신의 계정은 삭제할 수 없습니다.' });
+    }
     try {
         const userId = req.params.id;
         // 외래키(FK) 참조 무결성을 위해 관련된 기기 및 로그를 먼저 삭제합니다.

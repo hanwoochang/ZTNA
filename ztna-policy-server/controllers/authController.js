@@ -376,11 +376,25 @@ exports.verifyContext = async (req, res) => {
         );
         const device = devices[0];
 
-        if (!device || device.status !== 'APPROVED' || device.last_ip_address !== currentIp) {
-            console.log(`[강제 추방] ${decoded.email} - 보안 컨텍스트 불일치 (신뢰 해제 또는 IP 변경)`);
+        // [강제 추방] 기기 미등록 또는 관리자에 의해 차단/승인 해제된 경우만 TERMINATE
+        // IP 변경은 Wi-Fi ↔ LTE 전환, NAT 변경 등 정상 상황이므로 추방 조건에서 제외
+        if (!device || device.status !== 'APPROVED') {
+            console.log(`[강제 추방] ${decoded.email} - 기기 미승인 또는 차단 (status: ${device?.status ?? '미등록'})`);
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
-            return res.status(403).json({ action: 'TERMINATE', message: '보안 정책 위반 감지! 연결이 강제 종료됩니다.' });
+            return res.status(403).json({ action: 'TERMINATE', message: '관리자에 의해 기기 접근이 차단되었습니다. 세션이 종료됩니다.' });
+        }
+
+        // [IP 변경 감지] 추방 없이 DB 갱신 후 클라이언트에 IP_CHANGED 상태 전달
+        // 클라이언트는 이 상태를 받아도 세션을 유지하고, 필요시 UI 경고만 표시
+        let ipChanged = false;
+        if (device.last_ip_address && device.last_ip_address !== currentIp) {
+            console.log(`[IP 변경 감지] ${decoded.email} - ${device.last_ip_address} → ${currentIp} (세션 유지)`);
+            await pool.query(
+                'UPDATE devices SET last_ip_address = ? WHERE user_id = ? AND device_identifier = ?',
+                [currentIp, decoded.userId, deviceId]
+            );
+            ipChanged = true;
         }
 
         const [users] = await pool.query('SELECT role, department, position_level FROM users WHERE id = ?', [decoded.userId]);
@@ -404,7 +418,9 @@ exports.verifyContext = async (req, res) => {
             { expiresIn: '15m' }
         );
         res.json({ 
-            status: 'SAFE', 
+            // IP_CHANGED: 네트워크 환경 변화 감지됨 (세션은 유지)
+            // SAFE: 완전 정상
+            status: ipChanged ? 'IP_CHANGED' : 'SAFE', 
             token: newToken, 
             allowDownload,
             position_level: user.position_level !== undefined ? user.position_level : decoded.position_level,
