@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Icon } from '../ui/Icon';
