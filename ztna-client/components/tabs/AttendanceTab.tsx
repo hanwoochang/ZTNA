@@ -1,12 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { View, Text, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Swipeable } from 'react-native-gesture-handler';
-import { Calendar } from 'react-native-calendars';
-import { SkeletonLoader } from '../SkeletonLoader';
-import { useTheme } from '../../hooks/useTheme';
-import * as DocumentPicker from 'expo-document-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Icon } from '../ui/Icon';
 
 export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance, handleAttendance, employees, fetchEmployees, styles, colors }: any) => {

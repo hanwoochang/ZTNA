@@ -1,8 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import { LoginPage } from './pages/LoginPage';
 import { Overview } from './pages/Overview';

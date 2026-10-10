@@ -1,24 +1,16 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, ScrollView, Modal, TextInput, RefreshControl, Platform, useWindowDimensions, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Animated, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useFocusEffect } from '@react-navigation/native';
-import { Swipeable } from 'react-native-gesture-handler';
-import { Calendar } from 'react-native-calendars';
 import { Image } from 'expo-image';
 import { useAppStyles } from '../styles/styles';
 import { useIntranet } from '../hooks/useIntranet';
-import { SkeletonLoader } from '../components/SkeletonLoader';
 import { useTheme } from '../hooks/useTheme';
-import * as DocumentPicker from 'expo-document-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Storage from '../utils/storage';
 import { NavigationContainer, NavigationIndependentTree, useNavigationContainerRef } from '@react-navigation/native';
 import * as ScreenCapture from 'expo-screen-capture';
 
 const Tab = createBottomTabNavigator();
-
-import { Feather } from '@expo/vector-icons';
 
 import { Icon } from '../components/ui/Icon';
 import { AttendanceTab } from '../components/tabs/AttendanceTab';

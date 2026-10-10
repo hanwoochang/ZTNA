@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../api';
+import { POSITIONS, POSITION_LIST, DEPARTMENTS, ROLES } from '../../constants/organization';
 
 export function EditUserPopup() {
   const { id } = useParams();
@@ -14,7 +15,6 @@ export function EditUserPopup() {
       }).catch(console.error);
     }
   }, [id]);
-  const POSITIONS: any = { '사원': 1, '대리': 2, '과장': 3, '차장': 4, '부장': 5, '임원': 6 };
 
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +48,13 @@ export function EditUserPopup() {
             <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>직급</label>
               <select value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
-                {['사원', '대리', '과장', '차장', '부장', '임원'].map(d => <option key={d} value={d}>{d}</option>)}
+                {POSITION_LIST.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>부서</label>
               <select value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
-                {['일반부서', '재무팀', '인사팀', '보안팀'].map(d => <option key={d} value={d}>{d}</option>)}
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
@@ -67,9 +67,7 @@ export function EditUserPopup() {
             <div>
               <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>권한 (Role)</label>
               <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }}>
-                <option value="USER">일반 사용자</option>
-                <option value="FINANCE">재무 관리자</option>
-                <option value="ADMIN">시스템 관리자</option>
+                {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>
           </div>

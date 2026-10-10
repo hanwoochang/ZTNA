@@ -1,276 +1,90 @@
-# ZTNA 솔루션 분석 보고서 (기타 구성 요소)
+# ZTNA 솔루션 통합 종합 기술 명세서 (Project Comprehensive Specification)
 
-## 1. 개요 (Introduction)
+## 1. 프로젝트 개요 (Introduction)
 
-본 보고서는 `ztna` 폴더 내에 포함된 클라이언트, 게이트웨이 및 정책 서버의 기능을 분석한 결과입니다. 이 시스템은 사용자 신원뿐만 아니라 기기 보안 상태, 접속 위치, 접속 시간 등 다양한 **컨텍스트(Context)**를 기반으로 접근 제어를 수행하는 ZTNA(Zero Trust Network Access) 아키텍처를 구현하고 있습니다.
-
----
-
-## 2. 구성 요소별 상세 분석
-
-### 2.1 ZTNA Policy Server (제어 평면)
-사용자의 인증 요청을 처리하고, 위험도를 평가하여 접근 허용 여부를 결정하는 핵심 두뇌 역할을 합니다.
-
-- **위험도 기반 인증 (Risk-based Auth)**:
-    - **기기 보안**: 루팅/탈옥 여부를 체크하여 차단합니다.
-    - **위치 분석**: 이전 접속 위치와의 거리와 이동 속도를 계산하여 물리적으로 불가능한 이동(Impossible Travel)이 감지되면 위험 점수를 부여합니다.
-    - **시간대 분석**: 평소 접속 시간대와 크게 다를 경우(예: 새벽 시간) 위험 점수를 상향합니다.
-    - **환경 분석**: 배터리 급감, Wi-Fi 사용 여부 등을 체크합니다.
-- **단계별 인증 (Step-up Auth)**: 
-    - 위험 점수가 일정 수준(예: 30점) 이상이면 이메일 OTP를 통한 2차 인증을 요구합니다.
-    - 위험 점수가 매우 높으면(예: 70점) 즉시 차단합니다.
-- **세션 관리**: JWT(JSON Web Token)를 발급하며, 로그아웃 시 JTI를 블랙리스트에 등록하여 즉시 폐기합니다.
-- **지속적 검증 (Heartbeat)**: 주기적으로 클라이언트의 컨텍스트(IP 등)를 확인하여 변경 사항이 발생하면 세션을 즉시 종료합니다.
-
-### 2.2 ZTNA Gateway (데이터 평면)
-클라이언트와 내부망 리소스 사이의 '문지기' 역할을 수행하며 실제 트래픽을 중계합니다.
-
-- **JWT 검증**: 모든 프라이빗 리소스 접근 시 Policy Server에서 발급한 유효한 JWT가 있는지 확인합니다.
-- **실시간 블랙리스트 체크**: 로그아웃되거나 폐기된 토큰인지를 DB의 `token_blacklist`를 통해 실시간으로 확인합니다.
-- **CORS 및 IP 제한**: 허가된 클라이언트 IP 또는 모바일 앱의 요청만 수신하도록 제한합니다.
-- **리버스 프록시**: 인증된 요청에 한해 `http-proxy-middleware`를 사용하여 실제 내부 서버(`TARGET_URL`)로 트래픽을 안전하게 전달합니다.
-
-### 2.3 ZTNA Client (사용자 접점)
-사용자가 ZTNA 네트워크에 접속하기 위해 사용하는 React Native/Expo 기반의 모바일 애플리케이션입니다.
-
-- **컨텍스트 수집**: 기기 ID, 루팅 여부, 현재 위치(위경도), 배터리 상태, 네트워크 상태(Wi-Fi 여부) 등 보안 평가에 필요한 데이터를 수집하여 서버에 전달합니다.
-- **인증 UI**: ID/PW 로그인 및 2차 인증(OTP) 입력을 위한 인터페이스를 제공합니다.
-- **보안 저장소**: 발급된 JWT 출입증을 `expo-secure-store`를 사용하여 안전하게 보관합니다.
-- **상태 모니터링**: 백그라운드에서 주기적으로 서버와 통신(Heartbeat)하며 현재 보안 컨텍스트의 유효성을 유지합니다.
+본 문서는 **NIST SP 800-207 제로 트러스트 아키텍처 표준**에 기반하여 개발된 통합 ZTNA 보안 시스템의 구조와 동작 명세를 정의합니다.
+기존 경계 기반 보안 모델의 한계를 극복하기 위해 모든 네트워크 접근을 기본적으로 불신(Default Deny)하며, 사용자 신원, 기기 무결성, 접속 위치, 시간대 등 다차원 컨텍스트를 종합 분석하여 최소 권한(Least Privilege)을 동적으로 부여합니다.
 
 ---
 
-## 3. 주요 보안 메커니즘
+## 2. 서브시스템별 상세 구조 및 아키텍처
 
-1.  **지속적 신뢰 검증 (Continuous Verification)**: 한 번 로그인했다고 해서 영구적인 신뢰를 주지 않으며, Heartbeat를 통해 접속 환경의 변화를 실시간으로 감시합니다.
-2.  **컨텍스트 인식 보안 (Context-Aware Security)**: 단순 비밀번호를 넘어 '어디서', '언제', '어떤 기기'로 접속하는지를 종합적으로 판단합니다.
-3.  **즉각적인 권한 회수 (Instant Revocation)**: 로그아웃 또는 보안 위반 감지 시 블랙리스트 기법을 통해 발급된 토큰을 즉시 무효화합니다.
-4.  **물리적 이동 속도 체크**: Haversine 공식을 이용해 이전 접속지로부터의 이동 속도를 계산함으로써 계정 탈취 가능성을 효과적으로 탐지합니다.
-# ZTNA 솔루션 요구사항 정의서 (Requirements Specification)
+본 솔루션은 제어 평면(Control Plane), 데이터 평면(Data Plane), 클라이언트 접점, 관리자 관제 웹의 4개 계층으로 완전히 분리되어 상호작용합니다.
 
-## 1. 프로젝트 개요
-본 프로젝트는 "결코 신뢰하지 않고, 항상 검증한다(Never Trust, Always Verify)"는 제로 트러스트 원칙에 기반하여, 사용자의 신원뿐만 아니라 기기 상태와 환경 컨텍스트를 종합적으로 판단하여 내부 리소스에 대한 접근을 제어하는 보안 솔루션을 구축하는 것을 목표로 한다.
+```
+[ ZTNA Client (Mobile / Web) ]
+         │
+         ├─── (1) Auth & CARTA Risk Evaluation / Heartbeat ───▶ [ Policy Server (PDP) : 3000 ]
+         │                                                            │ (Control Plane)
+         │                                                            ▼
+         └─── (2) Reverse Proxy Encrypted Traffic (JWT Verify) ───▶ [ ZTNA Gateway (PEP) : 4000 ]
+                                                                      │ (Data Plane)
+                                                                      ▼
+                                                                  [ Target Server (Private Network) : 5000 ]
+                                                                  (127.0.0.1 Binding Only)
 
-## 2. 기능적 요구사항 (Functional Requirements)
+[ Admin Web Dashboard : 5173 ] ─── (Real-time Audit & Revocation) ───▶ [ Policy Server : 3000 ]
+```
 
-### 2.1 사용자 인증 및 관리
-- **회원가입**: 이메일과 비밀번호를 이용한 사용자 등록 기능.
-- **로그인**: 1차 인증(ID/PW) 및 기기 식별자 확인.
-- **2차 인증 (OTP)**: 위험도가 감지된 접근에 대해 이메일 기반의 OTP 인증 수행.
-- **로그아웃**: 세션 종료 및 발급된 출입증(JWT) 즉시 폐기.
+### 2.1 ZTNA Policy Server (정책 결정점 / PDP / Control Plane)
+* **포트:** 3000
+* **역할:** 사용자의 인증 및 인가, CARTA 위험도 평가, 세션 발급/연장/폐기, 기기 라이프사이클 관리.
+* **주요 구성 모듈:**
+  * [controllers/authController.js](file:///C:/ZTNA/ztna/ztna-policy-server/controllers/authController.js): 회원가입, ZTNA 로그인 판별, 이메일 OTP 검증, 생체인증 검증, 세션 연장(Heartbeat), 로그아웃(토큰 블랙리스트 등재), 관리자 로그인.
+  * [services/riskEngine.js](file:///C:/ZTNA/ztna/ztna-policy-server/services/riskEngine.js): 단말기 무결성, Haversine 공식 기반 물리적 이동 속도, 신규 IP, 심야 시간대 등 동적 점수(0~100점) 산출.
+  * [routes/admin.js](file:///C:/ZTNA/ztna/ztna-policy-server/routes/admin.js): 관리자 전용 대시보드 통계, 24시간 위험도 트렌드, 단말기 승인/차단/삭제, 임직원 관리 API.
+  * [utils/ip.js](file:///C:/ZTNA/ztna/ztna-policy-server/utils/ip.js): 프록시 헤더 및 IPv6 정제 공통 모듈.
 
-### 2.2 보안 컨텍스트 수집 (Client-side)
-- **기기 식별**: 고유 기기 ID(UUID) 수집 및 검증.
-- **무결성 검사**: 루팅 또는 탈옥 여부 실시간 탐지 및 차단.
-- **위치 정보**: 접속 위치(위도, 경도) 수집.
-- **네트워크 상태**: 현재 IP 주소 및 Wi-Fi 접속 여부 확인.
-- **기기 상태**: 배터리 잔량 및 급격한 방전 여부 모니터링.
+### 2.2 ZTNA Gateway (정책 집행점 / PEP / Data Plane)
+* **포트:** 4000
+* **역할:** 외부 클라이언트와 비인가 트래픽의 내부망 직접 접근 차단, JWT 출입증 및 블랙리스트 실시간 검증, 리버스 프록시 트래픽 전달.
+* **주요 구성 모듈:**
+  * [server.js](file:///C:/ZTNA/ztna/ztna-gateway/server.js): 문지기 미들웨어(`verifyToken`).
+    * 토큰 서명 유효성 및 만료 여부 검사.
+    * `token_blacklist` 대조로 로그아웃된 토큰 즉시 거부.
+    * DB 실시간 조회를 통한 세션 강제 종료(Session Tearing): 관리자가 기기 신뢰를 해제(BLOCKED)하는 즉시 다음 요청 차단.
+    * 사용자 최신 역할(`role`), 부서(`department`), 직급(`position_level`) 실시간 조회 후 Target Server 전달 헤더 주입 및 클라이언트 동기화 헤더 반환.
+  * [target.js](file:///C:/ZTNA/ztna/ztna-gateway/target.js) (Port 5000): 로컬루프백(`127.0.0.1`)에만 바인딩되어 외부에서 직접 접근할 수 없는 보호된 기밀 인트라넷.
+    * MVC 패턴 컨트롤러: 출퇴근(`attendance`), 기밀문서(`documents`), 일정(`events`), 보안공지(`notices`), 임직원 조회(`employees`).
+    * `ipBlocker`: 게이트웨이가 아닌 외부 IP의 직접 접근 차단.
+    * `accessLogger`: 사내망 API 접근 이력 DB 감사 기록.
 
-### 2.3 위험도 기반 접근 제어 (Policy Server)
-- **위험 점수 산출**:
-    - 새로운 기기 또는 미등록 IP 접속 시 점수 부여.
-    - 이전 접속 위치와의 거리 및 이동 속도(물리적 불가능한 이동) 계산.
-    - 평소와 다른 비정상 시간대 접속 탐지.
-- **동적 정책 적용**:
-    - **Safe**: 즉시 접근 허용 (JWT 발급).
-    - **Suspicious**: 2차 인증(OTP) 요구.
-    - **Danger**: 접근 즉시 차단.
+### 2.3 ZTNA Client (사용자 접점 / Secure Enterprise Workspace)
+* **플랫폼:** React Native (Expo SDK 54), TypeScript, 반응형 웹 지원
+* **주요 구성 모듈:**
+  * [screens/LoginScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/LoginScreen.tsx) & [OtpScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/OtpScreen.tsx): 단말기 컨텍스트(UUID, GPS, 무결성) 수집 및 2차 인증 인터페이스.
+  * [screens/BlockedScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/BlockedScreen.tsx): 보안 정책 위반 시 붉은 방패 화면과 함께 명확한 차단 사유 표출.
+  * [screens/IntranetScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/IntranetScreen.tsx):
+    * 10초 주기 Heartbeat 백그라운드 폴링.
+    * 하단 탭 내비게이션: 근태 관리(`AttendanceTab`), 기밀문서 및 공지사항(`DocumentsTab`), 일정(`ScheduleTab`), 설정(`SettingsTab`).
+    * [components/tabs/documents/DocumentSection.tsx](file:///C:/ZTNA/ztna/ztna-client/components/tabs/documents/DocumentSection.tsx): 기밀 PDF 카드 슬라이더, 업로드 모달, BYOD 감지 시 다운로드 버튼 비활성화.
+    * [components/tabs/documents/NoticeSection.tsx](file:///C:/ZTNA/ztna/ztna-client/components/tabs/documents/NoticeSection.tsx): 부서/직급별 보안 공지사항 열람/작성/수정 모달.
 
-### 2.4 데이터 보호 및 중계 (Gateway)
-- **리소스 보호**: 인가되지 않은 외부의 직접적인 접근 차단.
-- **트래픽 중계**: 인증된 사용자에 한해 내부망 서비스(Target Server)로의 리버스 프록시 수행.
-- **실시간 검증**: 블랙리스트에 등록된 토큰의 접근을 실시간으로 식별하여 차단.
-
-## 3. 비기능적 요구사항 (Non-Functional Requirements)
-
-### 3.1 보안성
-- 비밀번호는 복구 불가능한 해시(bcrypt)로 암호화하여 저장해야 한다.
-- 모든 통신은 JWT를 통해 인증되어야 하며, JTI 기반의 블랙리스트 기능을 갖추어야 한다.
-- 클라이언트의 보안 저장소(Secure Store)에 토큰을 보관해야 한다.
-
-### 3.2 성능 및 가용성
-- 이메일 발송 등 지연이 발생하는 작업은 비동기로 처리하여 로그인 응답 속도를 최소화해야 한다.
-- 주기적인 Heartbeat(5초 단위 등)를 통해 실시간 세션 유효성을 검증해야 한다.
-
-### 3.3 사용자 경험 (UX)
-- 보안 위협 발생 시 사용자에게 명확한 사유를 안내해야 한다.
-- 인증번호 미수신 시 재발송 기능을 제공해야 한다.
-# ZTNA 솔루션 기술 명세서 (Technical Specification)
-
-## 1. 시스템 아키텍처 (System Architecture)
-본 시스템은 **Client - Control Plane - Data Plane**으로 구성된 전형적인 ZTNA 아키텍처를 따른다.
-
-- **Control Plane**: `ztna-policy-server` (인증 및 정책 결정)
-- **Data Plane**: `ztna-gateway` (트래픽 중계 및 검증)
-- **Client**: `ztna-client` (컨텍스트 수집 및 인증 인터페이스)
-
-## 2. 기술 스택 (Tech Stack)
-
-### 2.1 Backend (Servers)
-- **Runtime**: Node.js (v18+)
-- **Framework**: Express.js
-- **Database**: MySQL 8.0
-- **Libraries**:
-    - `jsonwebtoken`: JWT 생성 및 검증
-    - `bcrypt`: 비밀번호 해싱
-    - `http-proxy-middleware`: 리버스 프록시 구현
-    - `nodemailer`: OTP 메일 발송
-
-### 2.2 Frontend (Mobile Client)
-- **Framework**: React Native (Expo)
-- **Language**: TypeScript
-- **Security**: `expo-secure-store` (토큰 저장), `expo-device` (기기 정보), `expo-location` (GPS)
-
-## 3. 핵심 알고리즘 및 로직
-
-### 3.1 위험 점수(Risk Score) 산출 로직
-접근 요청 시 다음 항목을 합산하여 최종 점수를 산출한다.
-- **기기 신뢰도**: 미등록 기기(+30점), 비신뢰 기기(+100점)
-- **네트워크 위치**: 새로운 IP 접속(+20점), 위치 정보 없음(+15점)
-- **물리적 이동 속도**: 1,000km/h 이상(+50점), 500km/h 이상(+30점)
-- **환경 컨텍스트**: 비정상 시간대(+20점), 모바일 데이터 접속(+20점), 배터리 급감(+20점)
-
-### 3.2 위험도별 액션 (Action Matrix)
-- **Score < 30**: `ALLOWED` (즉시 JWT 발급)
-- **30 <= Score < 70**: `STEP_UP` (OTP 인증 프로세스 시작)
-- **Score >= 70**: `DENIED` (접근 즉시 차단)
-
-## 4. 데이터베이스 스키마 (주요 테이블)
-
-- **users**: 사용자 정보, 해시된 비밀번호, OTP 정보 저장.
-- **devices**: 기기 식별자, 신뢰 여부, 마지막 접속 IP 및 위치 정보.
-- **access_logs**: 모든 로그인 시도의 위험 점수, 사유, 결과 기록.
-- **token_blacklist**: 폐기된 JWT의 JTI(Unique ID) 저장.
-
-## 5. API 명세 (핵심 엔드포인트)
-
-### 5.1 Policy Server
-- `POST /api/signup`: 회원가입
-- `POST /api/login`: 로그인 및 컨텍스트 전달 (위험도 평가)
-- `POST /api/verify-otp`: 2차 인증 확인
-- `POST /api/logout`: 세션 종료 및 토큰 폐기
-- `POST /api/verify-context`: 하트비트 세션 유효성 검증
-
-### 5.2 Gateway
-- `ALL /private/*`: 프라이빗 리소스 접근 (JWT 검증 필수)
-
-## 6. 보안 프로토콜 (Security Protocols)
-1.  **지속적 검증(Continuous Verification)**: 발급된 JWT는 짧은 유효기간(5분)을 가지며, 하트비트를 통해 갱신된다.
-2.  **즉각적 무효화(Instant Revocation)**: 로그아웃 시 JTI를 DB 블랙리스트에 등록하고, 게이트웨이는 매 요청마다 이를 대조한다.
-3.  **Impossible Travel 감지**: Haversine 공식을 사용하여 물리적으로 이동 가능한 거리를 초과한 접근을 원천 차단한다.
-# 🚀 ZTNA v2.0 졸업작품 프로젝트 12주 마일스톤
-
-## 📝 프로젝트 개요
-- **프로젝트명:** 지속적 검증 및 동적 컨텍스트 분석 기반 ZTNA 시스템 (v2.0 고도화)
-- **개발 기간:** 2026년 2학기 (약 12주)
-- **목표:** 1학기에 구축한 ZTNA 코어 엔진을 기반으로, 엔터프라이즈급 UI/UX 적용, 사내망 비즈니스 로직 추가, 관리자 웹 대시보드 연동, 클라우드 실서버(AWS) 배포 및 모바일 앱(APK) 추출을 통해 상용화 수준의 통합 보안 솔루션을 완성한다.
+### 2.4 Admin Web Dashboard (보안 관제 콘솔)
+* **플랫폼:** React 19, Vite, TypeScript, Tailwind CSS
+* **주요 구성 모듈:**
+  * [components/layout/DashboardLayout.tsx](file:///C:/ZTNA/ztna/ztna-admin-web/src/components/layout/DashboardLayout.tsx): 대시보드 프레임워크.
+  * [components/layout/NotificationBell.tsx](file:///C:/ZTNA/ztna/ztna-admin-web/src/components/layout/NotificationBell.tsx): 3초 주기 폴링 기반 고위험(70점 이상) 실시간 알림 벨, 배지, 드롭다운, 브라우저 Web Notification 발송.
+  * [pages/LogsPage.tsx](file:///C:/ZTNA/ztna/ztna-admin-web/src/pages/LogsPage.tsx): 전사 접속 감사 로그 테이블 (70점 이상 레드 하이라이팅, 30점 이상 옐로우 하이라이팅).
+  * [pages/DevicesPage.tsx](file:///C:/ZTNA/ztna/ztna-admin-web/src/pages/DevicesPage.tsx): 기기 승인/차단(Revoke)/삭제 및 BYOD ↔ CORPORATE 소유 형태 변경.
+  * [pages/UsersPage.tsx](file:///C:/ZTNA/ztna/ztna-admin-web/src/pages/UsersPage.tsx): 임직원 계정 생성/수정/삭제 및 직급/부서 제어.
 
 ---
 
-## 📅 주차별 세부 계획
+## 3. 핵심 보안 프로토콜 및 데이터베이스 스키마
 
-### 🛠️ Phase 1: 사내망 기능 확장 및 앱 UI/UX 고도화 (1주차 ~ 3주차)
-*게이트웨이 통과 이후의 실제 비즈니스 가치를 증명하고, 모바일 앱의 완성도를 높이는 단계*
+### 3.1 CARTA 위험도 평가 및 정책 결정
+1. **0 ~ 29점 (`ALLOW`)**: 승인된 CORPORATE 기기 정상 접속 -> 즉시 출입증(JWT, 15분 만료) 발급.
+2. **30 ~ 69점 (`STEP_UP`)**: 미등록 기기 또는 BYOD 단말 접속 -> 이메일 OTP(6자리) 또는 FaceID/지문 생체 인증 요구.
+   * 통과 시 단말 소유권에 따라 `allowDownload: false`가 설정된 조건부 JWT 발급.
+3. **70점 이상 또는 치명적 위협 (`DENY`)**: OS 탈옥/루팅, 블랙리스트 기기, Impossible Travel(1,000km/h 초과 이동) -> 토큰 발급 즉시 거부, `access_logs`에 DENY 기록.
 
-- **1주차: Target Server(사내망) 비즈니스 API 개발**
-  - 인트라넷 전용 기밀문서(더미 PDF) 열람 및 다운로드 API 구현
-  - 모바일 사원증 기반 출퇴근 기록(체크인) API 구현
-  - 사내망 접근 로그 DB 스키마 추가
-
-- **2주차: 엔터프라이즈 모바일 앱 UI/UX 개편**
-  - React Native 클라이언트 전면 디자인 리뉴얼 (다크 모드 지원 및 하단 탭 네비게이션 도입)
-  - 인증 상태(차단, 2차 인증, 허용)별 애니메이션 트랜지션 적용
-  - API 호출 시 스켈레톤 로딩(뼈대 UI) 도입으로 사용자 경험 개선
-  - **[추가 계획] 3단 탭(Tab) UI 구조 고도화**:
-    - **1탭 (근태 관리)**: 사원증 기반 출퇴근 버튼 및 당일 출퇴근 시간 실시간 조회 연동
-    - **2탭 (기밀 문서 및 게시판)**: 최고 기밀 문서(PDF) 다운로드 및 보안 게시판(Notice Board) 구성
-    - **3탭 (설정)**: 다크/라이트 모드 테마 변경 UI, 사용자 인가 기기/IP 정보 배치 및 로그아웃 버튼 이관
-  - **[내일 진행할 추가 작업]**:
-    - **UI/UX 전면 리디자인**: 사용자가 제공할 레퍼런스 이미지/디자인에 맞춰 앱 전체 스타일 고도화
-    - **보안 게시판(Notice Board) 기능 완성**: Mock 데이터를 넘어, 클릭 시 게시물 상세 내용을 확인하고 새로운 기밀 게시물을 추가(POST)할 수 있는 실제 CRUD 기능 및 UI 구현
-
-- **3주차: 차세대 단말 보안 기능(App Security) 적용**
-  - `expo-screen-capture` 연동: 사내망 화면 진입 시 캡처 원천 차단 기능 구현
-  - `expo-local-authentication` 연동: 기존 이메일 OTP를 대체/보완하는 생체 인증(FaceID, 지문) 도입
-
----
-
-### 🖥️ Phase 2: ZTNA 관리자 관제 웹 대시보드 및 NIST SP 800-207 정책 엔진 구축 (4주차 ~ 6주차)
-*보안 시스템의 가시성(Visibility)을 확보하고, NIST SP 800-207 기반의 동적 속성 및 RBAC 정책 엔진(PDP/PEP)을 고도화하는 단계*
-
-- **4주차: 웹 대시보드 프로젝트 세팅 및 NIST SP 800-207 기반 RBAC/기기 속성 DB 설계**
-  - React.js (또는 Next.js) 기반 프로젝트 생성 및 정책 서버 API 연동 (유저, 기기, 로그 조회)
-  - **NIST SP 800-207 표준 준수 DB 스키마 확장**:
-    - `users`: 역할 기반 접근 제어(RBAC) 적용 (`role`: FINANCE, HR, DEV, GENERAL, ADMIN)
-    - `devices`: 기기 소유권 및 컴플라이언스 속성 추가 (`device_type`: CORPORATE / BYOD, `is_compliant`: 보안 패치 및 백신 정상 여부)
-
-- **5주차: PDP(정책 결정 엔진) 조건문 규칙 엔진 및 다차원 시각화 구현**
-  - Chart.js / Recharts 도입: 시간대별 위험도(Risk Score) 트렌드 및 통계 대시보드 구현
-  - **NIST SP 800-207 핵심 3단계 접근 결정 엔진(PDP) 구축**:
-    1. **완전 허용 (Allow)**: 사용자 역할(재무팀) + 회사 자산 기기(MDM 정상) + 사내 IP/정상 위치 → 전체 읽기/쓰기 및 다운로드 허용
-    2. **조건부 허용 (Step-up Auth / 제한적 허용)**: 사용자 역할(재무팀) + 개인 기기(BYOD) + 외부 이동통신망 → 2차 인증(MFA/OTP) 필수 + 읽기 전용 및 파일 다운로드 차단
-    3. **즉시 차단 (Deny)**: OS 보안 패치 미적용 또는 백신 미실행 등 무결성 훼손 기기 → 토큰 발급 거부 및 패치 유도 안내 화면 전환
-
-- **6주차: PEP(정책 실행 게이트웨이) 세부 검증, 관리자 제어 및 UX 연동 통합 구현**
-  - 카카오맵 API 또는 Google Maps API 연동: 모바일/웹 접속 GPS 위치 시각화 및 위험 접속 경고 마커 표출
-  - **게이트웨이(PEP) 세부 권한(Scope) 검증 연동 (현재 미구현된 ZTNA 2단계 정책 완성)**:
-    - [기능 추가] 조건부 허용(Step-Up) 통과 시, JWT Payload 안에 `allowDownload: false` 속성을 주입하여 발급.
-    - [차단 로직] `target.js`의 `/api/documents/secret.pdf` 등 다운로드 엔드포인트에서 해당 속성을 검사해 원천 차단 및 읽기 전용 모드 강제 적용.
-  - **관리자 능동 제어 및 클라이언트(웹/앱) 인지형 보안 UX 구현**:
-    - 대시보드 내 특정 기기 '강제 차단(Revoke)' 버튼 구현 및 Heartbeat 기반 실시간 세션 만료 검증
-    - 관리자 대시보드에서 계정별 등급(일반/부서별/최고관리자) 부여 및 모바일/웹 기능별 권한 동기화
-    - 조건부 허용 접속 시: 상단 "BYOD/외부 접속 모드: 다운로드 제한" 안내 배너 및 뷰어 유도
-    - 즉시 차단 접속 시: `BlockedScreen`을 통한 보안 패치 가이드 제공
-
----
-
-### ☁️ Phase 3: 하이브리드 아키텍처 배포(터널링 도입) 및 앱 빌드 (7주차 ~ 9주차)
-*모든 개발을 완료하고 실제 시연을 위한 하이브리드 배포 환경(또는 로컬 터널링)과 앱 빌드를 수행하는 단계*
-
-- **7주차: Cloudflare Tunnels 도입 및 배포 전략 확립**
-  - 졸업작품 데모 시연의 안정성과 ZTNA 'Dark Cloud(보이지 않는 자원)' 사상을 모두 만족하기 위해 내 PC(로컬) + Cloudflare Tunnels 조합 도입
-  - 로컬 환경의 게이트웨이 및 타겟 서버를 외부망(LTE/5G)으로 안전하게 터널링 연동 및 테스트
-
-- **8주차: (선택) 하이브리드 배포 인프라 구축**
-  - ZTNA의 정석적인 아키텍처 구현을 위해 정책 서버(Control Plane)와 관리자 웹만 AWS EC2 무료 티어로 이전하는 하이브리드 구성 테스트
-  - 터널링된 로컬 타겟 서버와 AWS 정책 서버 간의 안정적인 실시간 통신(CORS, DB 접속) 검증
-
-- **9주차: Expo EAS Build 및 최종 데모 앱 추출**
-  - 모바일 앱(Client)의 모든 API 요청 주소를 Cloudflare 터널 URL(또는 AWS IP)로 전면 교체
-  - Expo 클라우드 빌드(EAS) 설정 및 시연용 Android Standalone App(`.apk`) 추출 및 기기 설치 테스트
-
----
-
-### 📱 Phase 4: 부가 기능 확장 및 시연(Demo) 시스템 완성 (10주차 ~ 12주차)
-*ZTNA 코어를 넘어선 부가 가치 창출 및 졸업작품 최종 발표용 테스트 툴킷을 구축하는 단계*
-
-- **10주차: [추가 과제] 사내망 임직원 간 실시간 메시지 기능 구현**
-  - 사내망(Target Server) 내부에 WebSocket 또는 Polling 기반 메시징 API 구축
-  - 클라이언트 앱에 임직원 간 암호화된 메시지 송수신 UI 추가 (ZTNA 통과자만 사용 가능)
-
-- **11주차: 시연용 테스트 API 구축 및 시나리오 통합**
-  - 라이브 데모 시 원활한 시나리오 진행을 위한 **'시연용 컨트롤 패널(Test Toolkit)'** UI 및 전용 API 구축
-  - [제어 버튼] 클릭 한 번으로 테스트 계정 즉시 초기화(삭제 및 재생성), 접속 시간 강제 고정/조작 기능 추가
-  - [시나리오 1] 컨트롤 패널에서 '장거리 이동 강제 발생' 트리거 작동 시 앱에서 2차 인증(Step-Up) 요구 시연
-  - [시나리오 2] 관리자 대시보드에서 '강제 차단(Revoke)' 버튼 클릭 시 앱에서 즉각 로그아웃 및 튕김 현상 시연
-
-- **12주차: 최종 보고서 작성 및 리허설 (Buffer)**
-  - 졸업작품 최종 결과 보고서 작성 및 발표 시연 영상(캡처 방지 포함) 녹화
-  - 발표 자료 검토 및 잔여 버그 수정
-
----
-
-## 💡 아키텍처 설계 결정 및 한계점 (Architectural Decisions & Limitations)
-
-### 1. ZTNA 구현 방식: 보안 워크스페이스(Secure Enterprise Browser) 모델 채택
-- **논의 배경:** 상용 ZTNA 솔루션(Zscaler, V3 모바일 등)처럼 백그라운드에서 동작하며 스마트폰 내 별도의 타 사내 앱 네트워크를 OS 단에서 가로채는 'Agent(VPN Service) 기반 ZTNA' 도입을 검토함.
-- **선택과 한계:** OS 수준의 VPN 통제 방식은 안드로이드/iOS 내부 커널(네트워크 스택) 제어 및 Native(C, Swift, Kotlin) 개발이 필수적이며, 현재 채택한 크로스 플랫폼 프레임워크(React Native / Expo) 환경에서는 현실적인 기한 내 구현이 불가능함.
-- **최종 결정 (우회 및 고도화):** 하나의 앱 내부에 사내 인트라넷(기밀 문서, 게시판, 근태 관리) 기능을 통합 내장시키는 **'올인원 보안 워크스페이스(Secure Workspace) 모델'**을 채택함. 임직원이 별도의 ZTNA 에이전트를 켜고 끄는 번거로움 없이, 본 사내 전용 보안 앱에 접속하는 순간 ZTNA 정책이 즉각적이고 통합적으로 적용되도록 설계하여 사용자 경험(UX)과 보안성을 모두 확보함.
-
----
-
-## 🎯 최종 산출물 (Deliverables)
-1. **ZTNA Client App:** 안드로이드 설치용 `.apk` 파일
-2. **ZTNA Policy & Gateway Server:** AWS EC2 위에서 구동되는 백엔드 인프라
-3. **ZTNA Admin Dashboard:** Vercel에 배포된 웹 기반 실시간 관제 시스템
-4. **최종 보고서:** 기술 스택, 시스템 아키텍처, 트러블슈팅 내역이 포함된 졸업작품 논문/보고서
+### 3.2 주요 데이터베이스 스키마
+* **`users`**: `id`, `email`, `password_hash`, `name`, `department`, `position`, `position_level` (1~6), `role` (USER/FINANCE/ADMIN), `otp_code`, `otp_expiry`, `otp_attempts`, `is_active`.
+* **`devices`**: `id`, `user_id`, `device_identifier`, `device_type` (BYOD/CORPORATE), `status` (PENDING/APPROVED/BLOCKED), `last_ip_address`, `last_latitude`, `last_longitude`, `last_accessed_at`.
+* **`access_logs`**: `id`, `user_id`, `device_id`, `ip_address`, `risk_score`, `action_taken` (ALLOW/STEP_UP/DENY), `reason`, `login_hour`, `created_at`.
+* **`token_blacklist`**: `id`, `jti`, `expires_at`, `created_at`.
+* **`notices`**: `id`, `title`, `content`, `author`, `date`, `is_edited`, `target_dept`, `target_position_level`.
+* **`documents`**: `id`, `title`, `description`, `original_name`, `filename`, `file_path`, `author`, `uploaded_at`.
+* **`attendance`**: `id`, `user_id`, `date`, `check_in_time`, `check_out_time`.
+* **`events`**: `id`, `title`, `date`, `author`.

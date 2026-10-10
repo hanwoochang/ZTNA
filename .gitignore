@@ -1,13 +1,53 @@
+# Dependencies
 node_modules/
-.expo/
-dist/
-web-build/
-*.log
+*/node_modules/
+
+# Environment variables & secrets (절대 Git에 노출 금지)
 .env
-.env.local
-.env.*.local
-.DS_Store
+.env.*
+*.env
+!.env.example
+
+# Build outputs
+dist/
+*/dist/
+dist-ssr/
+build/
+web-build/
+*.tsbuildinfo
+
+# Expo & Mobile
+.expo/
+expo-env.d.ts
 ios/
 android/
+.kotlin/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
 .vscode/
-scratch/ 
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Scratch
+scratch/
+*.tmp

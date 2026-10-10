@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search, Trash2, Edit } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import { useState, useEffect } from 'react';
+import { ShieldAlert, Trash2, Edit } from 'lucide-react';
 import api from '../api';
 
 export function UsersPage() {

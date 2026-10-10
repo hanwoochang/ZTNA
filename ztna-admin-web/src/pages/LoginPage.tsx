@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldAlert, Users, Server, Activity, LogOut, Search } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldAlert } from 'lucide-react';
 import api from '../api';
 
 export function LoginPage() {

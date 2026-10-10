@@ -3,23 +3,12 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const mysql = require('mysql2/promise'); // DB 연결 추가
+const pool = require('./config/db');
 
 const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors());
-
-//Policy Server와 같은 DB 연결
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || 'ztna',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
 
 // 블랙리스트 체크가 추가된 문지기 미들웨어
 const verifyToken = async (req, res, next) => {
