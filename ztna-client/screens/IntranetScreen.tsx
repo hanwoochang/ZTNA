@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
@@ -109,7 +109,7 @@ export const IntranetScreen = (props: Props) => {
                                         <Pressable 
                                             key={route} 
                                             onPress={() => navigateTo(route)}
-                                            style={({ hovered }) => [
+                                            style={({ hovered }: any) => [
                                                 { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
                                                 isActive ? { backgroundColor: colors.borderSoft } : (hovered ? { backgroundColor: colors.background } : {})
                                             ]}
@@ -136,7 +136,7 @@ export const IntranetScreen = (props: Props) => {
 
                             <Pressable 
                                 onPress={() => props.handleLogout()}
-                                style={({ hovered }) => [
+                                style={({ hovered }: any) => [
                                     { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 },
                                     hovered ? { backgroundColor: colors.background } : {}
                                 ]}

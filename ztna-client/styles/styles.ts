@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, ViewStyle } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 
 export const Colors = {
@@ -32,7 +32,7 @@ export const Colors = {
   }
 };
 
-const webStyle = Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {};
+const webStyle: ViewStyle = Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' } : {};
 
 export const useAppStyles = () => {
   const { isDark } = useTheme();
