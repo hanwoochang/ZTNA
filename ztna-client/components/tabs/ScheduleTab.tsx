@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, useWindowDimensions, Pressable, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Platform, useWindowDimensions, Pressable, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar } from 'react-native-calendars';
 import { Icon } from '../ui/Icon';
