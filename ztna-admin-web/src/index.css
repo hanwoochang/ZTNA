@@ -10,9 +10,33 @@ body {
 /* Force larger fonts for main content */  
 #main-dashboard-content h1 { font-size: 32px !important; }  
 #main-dashboard-content h2, #main-dashboard-content h3 { font-size: 22px !important; }  
-#main-dashboard-content p, #main-dashboard-content span, #main-dashboard-content td, #main-dashboard-content th, #main-dashboard-content div { font-size: 18px !important; line-height: 1.5 !important; }  
+#main-dashboard-content p:not(.notif-text), 
+#main-dashboard-content span:not(.notif-badge):not(.notif-text), 
+#main-dashboard-content td, 
+#main-dashboard-content th, 
+#main-dashboard-content div:not(.notif-container):not(.notif-card):not(.notif-badge):not(.notif-dropdown) { 
+  font-size: 18px !important; 
+  line-height: 1.5 !important; 
+}  
 #main-dashboard-content .text-6xl { font-size: 64px !important; }  
 #main-dashboard-content .recharts-text { font-size: 16px !important; } 
   
 /* Fix table cell padding */  
 #main-dashboard-content td, #main-dashboard-content th { padding-left: 24px !important; padding-right: 24px !important; padding-top: 16px !important; padding-bottom: 16px !important; } 
+
+/* 접속 로그 감사 위험도별 행 배경색 강제 지정 */
+tr.row-risk-danger {
+  background-color: #fee2e2 !important; /* 연한 빨간색 */
+  border-bottom: 1px solid #fca5a5 !important;
+}
+tr.row-risk-danger:hover {
+  background-color: #fecaca !important; /* 호버 시 조금 더 진한 빨강 */
+}
+
+tr.row-risk-warning {
+  background-color: #fef3c7 !important; /* 연한 주황/호박색 */
+  border-bottom: 1px solid #fcd34d !important;
+}
+tr.row-risk-warning:hover {
+  background-color: #fde68a !important; /* 호버 시 조금 더 진한 주황 */
+} 

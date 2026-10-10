@@ -31,31 +31,48 @@ export function LogsPage() {
             </tr>
           </thead>
           <tbody>
-            {logs.map(log => (
-              <tr key={log.id} className="text-2xl hover:bg-canvas transition-colors border-b border-hairline last:border-0">
-                <td className="pl-14 pr-8 text-body font-mono" style={{ paddingTop: '12px', paddingBottom: '12px', fontSize: '18px' }}>
-                  {new Date(log.created_at).toLocaleString()}
-                </td>
-                <td className="px-8 font-semibold text-ink" style={{ paddingTop: '12px', paddingBottom: '12px' }}>{log.email || '알 수 없음'}</td>
-                <td className="px-8 text-body font-mono" style={{ paddingTop: '12px', paddingBottom: '12px', fontSize: '18px' }}>{log.ip_address}</td>
-                <td className="px-8" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
-                  <div className="flex flex-col gap-1 py-1">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert size={16} className={log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'} />
-                      <span className={`font-bold ${log.risk_score >= 50 ? 'text-semantic-error' : log.risk_score >= 20 ? 'text-primary' : 'text-semantic-success'}`}>
-                        {log.risk_score}점
+            {logs.map(log => {
+              const isDanger = log.risk_score >= 70;
+              const isWarning = log.risk_score >= 30 && log.risk_score < 70;
+              
+              const rowRiskClass = isDanger ? 'row-risk-danger' : isWarning ? 'row-risk-warning' : 'hover:bg-canvas';
+
+              return (
+                <tr 
+                  key={log.id} 
+                  className={`text-2xl transition-colors border-b last:border-0 ${rowRiskClass}`}
+                  style={isDanger ? { backgroundColor: '#fee2e2' } : isWarning ? { backgroundColor: '#fef3c7' } : {}}
+                >
+                  <td className="pl-14 pr-8 text-body font-mono" style={{ paddingTop: '12px', paddingBottom: '12px', fontSize: '18px' }}>
+                    {new Date(log.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-8 font-semibold text-ink" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
+                    {log.email || '알 수 없음'}
+                  </td>
+                  <td className="px-8 text-body font-mono" style={{ paddingTop: '12px', paddingBottom: '12px', fontSize: '18px' }}>
+                    {log.ip_address}
+                  </td>
+                  <td className="px-8" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
+                    <div className="flex flex-col gap-1 py-1">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert size={16} className={isDanger ? 'text-semantic-error' : isWarning ? 'text-primary' : 'text-semantic-success'} />
+                        <span className={`font-bold ${isDanger ? 'text-semantic-error font-extrabold' : isWarning ? 'text-primary' : 'text-semantic-success'}`}>
+                          {log.risk_score}점
+                        </span>
+                      </div>
+                      <span className={`text-xl ${isDanger ? 'text-red-900 font-semibold' : isWarning ? 'text-amber-900' : 'text-body'}`}>
+                        {log.reason || '정상 접속'}
                       </span>
                     </div>
-                    <span className="text-body text-xl">{log.reason || '정상 접속'}</span>
-                  </div>
-                </td>
-                <td className="px-8" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
-                  <span className={`font-bold ${log.action_taken === 'DENY' ? 'text-semantic-error' : log.action_taken === 'STEP_UP' ? 'text-primary' : 'text-semantic-success'}`}>
-                    {log.action_taken === 'DENY' ? '차단됨' : log.action_taken === 'STEP_UP' ? 'OTP 요구' : '허용됨'}
-                  </span>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-8" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
+                    <span className={`font-bold ${log.action_taken === 'DENY' ? 'text-semantic-error' : log.action_taken === 'STEP_UP' ? 'text-primary' : 'text-semantic-success'}`}>
+                      {log.action_taken === 'DENY' ? '차단됨' : log.action_taken === 'STEP_UP' ? 'OTP 요구' : '허용됨'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {logs.length === 0 && (
