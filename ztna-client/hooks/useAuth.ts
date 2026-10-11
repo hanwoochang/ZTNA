@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import axios from 'axios';
 import * as Storage from '../utils/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Alert, Platform } from 'react-native';
 import { POLICY_SERVER_URL, GATEWAY_URL } from '../constants/config';
@@ -67,7 +66,7 @@ export const useAuth = () => {
             }
 
             if (loginResponse.data.requiresOtp) {
-                const authMethod = await AsyncStorage.getItem('authMethod');
+                const authMethod = await Storage.getItemAsync('authMethod');
                 
                 if (authMethod === 'bio') {
                     if (!loginResponse.data.isTrustedDevice) {

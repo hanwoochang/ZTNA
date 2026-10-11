@@ -21,7 +21,7 @@ export function UsersPage() {
 
   useEffect(() => { 
     fetchUsers(); 
-    const interval = setInterval(fetchUsers, 3000);
+    const interval = setInterval(fetchUsers, 30000); // 30초 (임직원 목록은 실시간 불필요)
     const handleMessage = (e: MessageEvent) => {
       if (e.data === 'RELOAD_USERS') fetchUsers();
     };

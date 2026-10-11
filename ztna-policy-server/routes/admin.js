@@ -86,6 +86,20 @@ router.get('/users', async (req, res) => {
     }
 });
 
+// 2-0. 단건 유저 조회 (EditUserPopup 전용 — 전체 목록 대신 1명만 요청)
+router.get('/users/:id', async (req, res) => {
+    try {
+        const [users] = await pool.query(
+            'SELECT id, email, role, department, position, position_level, name, is_active FROM users WHERE id = ?',
+            [req.params.id]
+        );
+        if (!users[0]) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+        res.json(users[0]);
+    } catch (error) {
+        res.status(500).json({ message: '유저 조회 실패', error: error.message });
+    }
+});
+
 const bcrypt = require('bcrypt');
 
 // 2-1. 신규 유저(임직원) 생성 API
@@ -170,18 +184,40 @@ router.get('/devices', async (req, res) => {
     }
 });
 
-// 4. 전사 접속 로그(Audit Log) 조회
+// 4. 전사 접속 로그(Audit Log) 조회 — 페이지네이션 적용
 router.get('/logs', async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 50, 200); // 최대 200건 상한
+        const page  = Math.max(parseInt(req.query.page)  || 1,   1);
+        const offset = (page - 1) * limit;
+
+        const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM access_logs');
+        const [logs] = await pool.query(`
+            SELECT l.id, u.email, l.ip_address, l.risk_score, l.action_taken, l.reason, l.created_at 
+            FROM access_logs l 
+            LEFT JOIN users u ON l.user_id = u.id 
+            ORDER BY l.id DESC LIMIT ? OFFSET ?
+        `, [limit, offset]);
+
+        res.json({ logs, total, page, totalPages: Math.ceil(total / limit) });
+    } catch (error) {
+        res.status(500).json({ message: '로그 조회 실패', error: error.message });
+    }
+});
+
+// 4-1. 고위험 로그 전용 조회 (useHighRiskNotification 전용 — 전체 로그 대신 70점 이상만)
+router.get('/logs/high-risk', async (req, res) => {
     try {
         const [logs] = await pool.query(`
             SELECT l.id, u.email, l.ip_address, l.risk_score, l.action_taken, l.reason, l.created_at 
             FROM access_logs l 
             LEFT JOIN users u ON l.user_id = u.id 
-            ORDER BY l.id DESC LIMIT 2000
+            WHERE l.risk_score >= 70
+            ORDER BY l.id DESC LIMIT 50
         `);
         res.json(logs);
     } catch (error) {
-        res.status(500).json({ message: '로그 조회 실패', error: error.message });
+        res.status(500).json({ message: '고위험 로그 조회 실패', error: error.message });
     }
 });
 
@@ -213,6 +249,14 @@ router.patch('/devices/:id/type', async (req, res) => {
         const { device_type } = req.body;
         if (!['BYOD', 'CORPORATE'].includes(device_type)) {
             return res.status(400).json({ message: '잘못된 기기 타입입니다.' });
+        }
+        // ADMIN 계정의 기기는 소유 형태 변경 불가 (프론트 하드코딩 의존 제거)
+        const [ownerRows] = await pool.query(
+            'SELECT u.role FROM devices d JOIN users u ON d.user_id = u.id WHERE d.id = ?',
+            [req.params.id]
+        );
+        if (ownerRows[0]?.role === 'ADMIN') {
+            return res.status(403).json({ message: '관리자 계정의 기기 소유 형태는 변경할 수 없습니다.' });
         }
         const [result] = await pool.query('UPDATE devices SET device_type = ? WHERE id = ?', [device_type, req.params.id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });

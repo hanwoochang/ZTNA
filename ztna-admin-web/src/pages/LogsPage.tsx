@@ -1,23 +1,34 @@
 import { useState, useEffect } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../api';
 
 export function LogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const LIMIT = 50;
 
-  const fetchLogs = () => api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
-  
-  useEffect(() => { 
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
+  const fetchLogs = (p = page) =>
+    api.get(`/admin/logs?page=${p}&limit=${LIMIT}`)
+      .then(res => {
+        setLogs(res.data.logs);
+        setTotal(res.data.total);
+        setTotalPages(res.data.totalPages);
+      })
+      .catch(console.error);
+
+  useEffect(() => {
+    fetchLogs(page);
+    const interval = setInterval(() => fetchLogs(page), 15000); // 15초 (감사 로그는 약간의 지연 허용)
     return () => clearInterval(interval);
-  }, []);
+  }, [page]);
 
   return (
     <div className="bg-card rounded-lg border border-hairline overflow-hidden">
       <div className="border-b border-hairline flex justify-between items-center bg-canvas-soft" style={{ padding: '16px 48px' }}>
         <h2 className="text-4xl font-bold text-ink">전체 접속 로그 감사 (Audit)</h2>
-        <span className="text-muted text-xl font-bold">총 {logs.length}건 조회됨</span>
+        <span className="text-muted text-xl font-bold">전체 {total.toLocaleString()}건 · 페이지 {page}/{totalPages}</span>
       </div>
       <div className="overflow-x-auto p-4">
         <table className="w-full text-left border-collapse">
@@ -34,12 +45,11 @@ export function LogsPage() {
             {logs.map(log => {
               const isDanger = log.risk_score >= 70;
               const isWarning = log.risk_score >= 30 && log.risk_score < 70;
-              
               const rowRiskClass = isDanger ? 'row-risk-danger' : isWarning ? 'row-risk-warning' : 'hover:bg-canvas';
 
               return (
-                <tr 
-                  key={log.id} 
+                <tr
+                  key={log.id}
                   className={`text-2xl transition-colors border-b last:border-0 ${rowRiskClass}`}
                   style={isDanger ? { backgroundColor: '#fee2e2' } : isWarning ? { backgroundColor: '#fef3c7' } : {}}
                 >
@@ -79,6 +89,29 @@ export function LogsPage() {
           <div className="py-20 text-center text-muted text-2xl font-bold">조회된 접속 로그가 없습니다.</div>
         )}
       </div>
+
+      {/* 페이지 네비게이션 */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center border-t border-hairline py-6 bg-canvas-soft" style={{ gap: '48px' }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg border border-hairline bg-card text-ink font-bold text-xl hover:bg-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            <ChevronLeft size={22} /> 이전
+          </button>
+          <span className="text-ink font-bold text-2xl tracking-wider select-none">
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg border border-hairline bg-card text-ink font-bold text-xl hover:bg-canvas disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            다음 <ChevronRight size={22} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

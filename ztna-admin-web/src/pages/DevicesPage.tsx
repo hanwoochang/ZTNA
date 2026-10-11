@@ -84,8 +84,8 @@ export function DevicesPage() {
                 <td className="px-4 font-semibold text-ink" style={{ paddingTop: '10px', paddingBottom: '10px' }}>{d.name || d.email}</td>
                 <td className="px-4" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
                   <button 
-                    onClick={() => d.email !== 'admin@company.com' && handleToggleType(d.id, d.device_type)}
-                    className={`text-2xl font-bold tracking-wide uppercase px-2 py-1 rounded transition-colors ${d.email === 'admin@company.com' ? 'cursor-default' : 'hover:bg-canvas-soft'}`} 
+                    onClick={() => handleToggleType(d.id, d.device_type)}
+                    className="text-2xl font-bold tracking-wide uppercase px-2 py-1 rounded transition-colors hover:bg-canvas-soft" 
                     style={{ color: d.device_type === 'BYOD' ? '#f54e00' : '#10b981', border: `1px solid ${d.device_type === 'BYOD' ? '#f54e0030' : '#10b98130'}` }}
                   >
                     {d.device_type || '-'}

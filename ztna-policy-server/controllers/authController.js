@@ -246,7 +246,7 @@ exports.verifyBio = async (req, res) => {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
         if (!user) return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
-        if (!user.otp_expiry) return res.status(401).json({ message: '유효한 2차 인증 요청이 없습니다.' });
+        if (!user.otp_code || !user.otp_expiry) return res.status(401).json({ message: '유효한 2차 인증 요청이 없습니다.' });
         if (new Date() > new Date(user.otp_expiry)) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
             return res.status(401).json({ message: '인증 시간이 만료되었습니다. 다시 로그인해주세요.' });

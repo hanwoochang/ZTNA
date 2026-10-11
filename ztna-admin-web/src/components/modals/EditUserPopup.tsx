@@ -9,8 +9,8 @@ export function EditUserPopup() {
   
   useEffect(() => {
     if (id) {
-      api.get(`/admin/users`).then(res => {
-        const user = res.data.find((u: any) => u.id === parseInt(id));
+      api.get(`/admin/users/${id}`).then(res => {
+        const user = res.data;
         if (user) setFormData({ email: user.email, name: user.name, department: user.department, position: user.position || '사원', role: user.role, is_active: user.is_active });
       }).catch(console.error);
     }

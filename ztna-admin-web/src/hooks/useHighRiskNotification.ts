@@ -19,9 +19,8 @@ export function useHighRiskNotification() {
   useEffect(() => {
     const pollHighRiskLogs = async () => {
       try {
-        const res = await api.get('/admin/logs');
-        const allLogs: any[] = res.data || [];
-        const highRiskLogs = allLogs.filter(l => l.risk_score >= 70);
+        const res = await api.get('/admin/logs/high-risk'); // 70점 이상만 반환하는 전용 API
+        const highRiskLogs: any[] = res.data || [];
         const lastReadId = parseInt(localStorage.getItem('ztna_last_read_log_id') || '0', 10);
 
         if (isFirstLoadRef.current) {
@@ -58,7 +57,7 @@ export function useHighRiskNotification() {
     };
 
     pollHighRiskLogs();
-    const interval = setInterval(pollHighRiskLogs, 3000);
+    const interval = setInterval(pollHighRiskLogs, 10000); // 10초 (3초 → DB 부하 과다)
     return () => clearInterval(interval);
   }, []);
 
