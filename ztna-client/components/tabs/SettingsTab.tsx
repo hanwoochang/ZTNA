@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Storage from '../../utils/storage';
 import { Icon } from '../ui/Icon';
 
 export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, userRole, userPositionLevel, styles, colors }: any) => {
@@ -14,7 +14,7 @@ export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, userRole
                 setAuthMethod('otp');
                 return;
             }
-            const saved = await AsyncStorage.getItem('authMethod');
+            const saved = await Storage.getItemAsync('authMethod');
             if (saved === 'bio') setAuthMethod('bio');
         };
         loadAuth();
@@ -22,7 +22,7 @@ export const SettingsTab = ({ email, deviceId, ipAddress, handleLogout, userRole
 
     const changeAuth = async (method: 'otp' | 'bio') => {
         setAuthMethod(method);
-        await AsyncStorage.setItem('authMethod', method);
+        await Storage.setItemAsync('authMethod', method);
     };
 
     return (
