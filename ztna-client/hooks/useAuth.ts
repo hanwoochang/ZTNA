@@ -27,6 +27,7 @@ export const useAuth = () => {
             setIsLoggedIn(true);
         } catch (error) {
             await Storage.deleteItemAsync('jwt_token');
+            await Storage.deleteItemAsync('allowDownload');
             if (!isAutoRecover) {
                 Alert.alert('기밀망 진입 실패', '문지기에게 차단당했습니다.');
             }

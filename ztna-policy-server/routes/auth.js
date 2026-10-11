@@ -5,8 +5,8 @@ const router = express.Router();
 const { loginLimiter, otpLimiter } = require('../middleware/rateLimiter');
 const authController = require('../controllers/authController');
 
-// [API 1] 회원가입
-router.post('/signup', authController.signup);
+// [API 1] 회원가입 (rate limit 적용 — 봇 무제한 계정 생성 방지)
+router.post('/signup', loginLimiter, authController.signup);
 
 // [API 2] 로그인 (ZTNA PDP 위험 평가 포함)
 router.post('/login', loginLimiter, authController.login);

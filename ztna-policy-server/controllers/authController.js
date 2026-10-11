@@ -139,6 +139,9 @@ exports.login = async (req, res) => {
 
             loginLimiter.resetKey(ipAddress);
 
+            const isBYOD = currentDevice?.device_type === 'BYOD';
+            const allowDownload = !isBYOD;
+
             const token = jwt.sign({ 
                 userId: user.id, 
                 email: user.email, 
@@ -147,9 +150,9 @@ exports.login = async (req, res) => {
                 position_level: user.position_level, 
                 jti: randomUUID(),
                 deviceId: currentDevice?.device_identifier || deviceId,
-                allowDownload: true 
+                allowDownload 
             }, process.env.JWT_SECRET, { expiresIn: '15m' });
-            return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload: true, position_level: user.position_level, role: user.role });
+            return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload, position_level: user.position_level, role: user.role });
         }
     } catch (error) {
         res.status(500).json({ message: '서버 에러', error: error.message });

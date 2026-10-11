@@ -148,8 +148,8 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || '문서 다운로드 권한이 없습니다.');
+                    const errorData = await response.json().catch(() => ({ message: '' }));
+                    throw new Error(errorData.message || `문서 다운로드 실패 (상태 코드: ${response.status})`);
                 }
                 const blob = await response.blob();
                 const blobUrl = URL.createObjectURL(blob);
