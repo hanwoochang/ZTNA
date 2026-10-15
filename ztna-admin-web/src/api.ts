@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// API 설정 (백엔드 정책 서버)
-const api = axios.create({ baseURL: 'http://54.79.43.69:3000/api' });
+// API 설정 (백엔드 정책 서버 - HTTPS 리버스 프록시 연동)
+const api = axios.create({ baseURL: '/api' });
 
 // 토큰 자동 주입 인터셉터
 api.interceptors.request.use((config) => {
