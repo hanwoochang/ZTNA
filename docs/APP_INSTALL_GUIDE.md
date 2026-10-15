@@ -12,13 +12,13 @@
 스마트폰의 모바일 브라우저(Chrome, 삼성 인터넷 등)에서 아래 링크 중 하나를 선택하여 다운로드합니다:
 
 *   **APK 파일 직접 다운로드 URL:**  
-    [https://expo.dev/artifacts/eas/J4cTixHsh2MR43U2cvi9cY_qWNpgZsBcxb3PNVcG5Wo.apk](https://expo.dev/artifacts/eas/J4cTixHsh2MR43U2cvi9cY_qWNpgZsBcxb3PNVcG5Wo.apk)
+    [https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk](https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk)
 *   **Expo 공식 빌드 페이지 (PC 화면에서 QR 스캔 가능):**  
-    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/fa0d8593-192c-4509-8ef4-595c3551c123](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/fa0d8593-192c-4509-8ef4-595c3551c123)
+    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/93a4ad41-8c75-4759-8a93-93307a1f1948](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/93a4ad41-8c75-4759-8a93-93307a1f1948)
 
 ### [2단계] 보안 설정 및 설치 진행
 1. 다운로드가 완료되면 상단 알림창을 내리거나, 스마트폰의 **[내 파일] -> [다운로드]** 폴더로 이동합니다.
-2. 다운로드된 `J4cTixHsh2MR43U2cvi9cY_qWNpgZsBcxb3PNVcG5Wo.apk` 파일을 터치합니다.
+2. 다운로드된 `qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk` 파일을 터치합니다.
 3. **"보안상의 이유로 이 출처의 알 수 없는 앱을 설치할 수 없습니다"** 팝업이 뜨는 경우:
    - **[설정]** 버튼 터치
    - 해당 브라우저(예: Chrome) 항목 옆의 **[이 출처의 앱 허용] 토글 스위치를 활성화(ON)**
