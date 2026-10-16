@@ -27,6 +27,9 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "experiments": {
+      "baseUrl": "/app"
+    },
     "plugins": [
       "expo-router",
       [
