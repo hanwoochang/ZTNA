@@ -159,7 +159,17 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                             value={newEventTitle} 
                             onChangeText={setNewEventTitle} 
                         />
-                        <TouchableOpacity style={[styles.button, { width: 48, height: 48, paddingHorizontal: 0, justifyContent: 'center', alignItems: 'center', marginBottom: 0 }]} onPress={handleAddEvent}>
+                        <TouchableOpacity 
+                            style={{ 
+                                width: 48, 
+                                height: 48, 
+                                borderRadius: 24, 
+                                backgroundColor: colors.primary, 
+                                justifyContent: 'center', 
+                                alignItems: 'center' 
+                            }} 
+                            onPress={handleAddEvent}
+                        >
                             <Icon name="plus" size={24} color={colors.onPrimary} />
                         </TouchableOpacity>
                     </View>
