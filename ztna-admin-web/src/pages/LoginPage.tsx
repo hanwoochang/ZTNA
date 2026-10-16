@@ -27,7 +27,7 @@ export function LoginPage() {
           <ShieldAlert size={80} className="text-primary" />
         </div>
         <h1 className="font-semibold text-center mb-5 text-ink tracking-tight" style={{ fontSize: '2.5rem' }}>Admin Login</h1>
-        <p className="text-center text-body mb-10" style={{ fontSize: '1.25rem' }}>ZTNA v2.0 관제 센터에 로그인하세요.</p>
+        <p className="text-center text-body mb-10" style={{ fontSize: '1.25rem' }}>ZTNA 관제 센터에 로그인하세요.</p>
 
         {error && <div className="bg-[#fae9ed] text-semantic-error p-5 rounded-md text-base mb-8 text-center border border-semantic-error/20">{error}</div>}
 

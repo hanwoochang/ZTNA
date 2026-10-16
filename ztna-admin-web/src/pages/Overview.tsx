@@ -11,7 +11,7 @@ export function Overview() {
 
   const fetchData = () => {
     api.get('/admin/stats').then(res => setStats(res.data)).catch(console.error);
-    api.get('/admin/logs').then(res => setLogs(res.data)).catch(console.error);
+    api.get('/admin/logs').then(res => setLogs(res.data.logs || res.data)).catch(console.error);
     api.get('/admin/stats/trend').then(res => setTrend(res.data.map((d: any) => ({ ...d, avgRisk: Number(d.avgRisk) })))).catch(console.error);
     api.get('/admin/stats/top-risky').then(res => setTopRisky(res.data.map((d: any) => ({ ...d, totalRisk: Number(d.totalRisk) })))).catch(console.error);
   };

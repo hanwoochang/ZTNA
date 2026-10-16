@@ -30,8 +30,8 @@ export function AddUserPopup() {
             <input type="email" placeholder="이메일 주소" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>임시 비밀번호</label>
-            <input type="password" placeholder="임시 비밀번호" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }} />
+            <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>비밀번호</label>
+            <input type="password" placeholder="비밀번호" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-canvas-soft border border-hairline rounded-md text-ink outline-none focus:border-primary transition-all" style={{ padding: '14px', fontSize: '16px', boxSizing: 'border-box' }} />
           </div>
           <div>
             <label className="block font-bold text-ink" style={{ fontSize: '14px', marginBottom: '6px' }}>이름</label>
