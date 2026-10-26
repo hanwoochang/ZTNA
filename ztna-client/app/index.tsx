@@ -53,8 +53,21 @@ export default function HomeScreen() {
             setDeviceContext(context);
 
             try {
-                const ip = await Network.getIpAddressAsync();
-                setIpAddress(ip);
+                let ip = '';
+                try {
+                    const res = await fetch('https://api.ipify.org?format=json');
+                    const data = await res.json();
+                    if (data?.ip) ip = data.ip;
+                } catch {
+                    // 공인 IP 조회 실패 시 로컬 인터페이스 조회로 폴백
+                }
+                if (!ip || ip === '0.0.0.0') {
+                    const localIp = await Network.getIpAddressAsync();
+                    if (localIp && localIp !== '0.0.0.0') {
+                        ip = localIp;
+                    }
+                }
+                setIpAddress(ip || 'IP 추적 불가');
             } catch {
                 setIpAddress('IP 추적 불가');
             }
