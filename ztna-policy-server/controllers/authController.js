@@ -139,7 +139,8 @@ exports.login = async (req, res) => {
             return res.json({ message: 'ZTNA 출입증 발급 성공', token, allowDownload, position_level: user.position_level, role: user.role });
         }
     } catch (error) {
-        res.status(500).json({ message: '서버 에러', error: error.message });
+        console.error('[로그인 에러 상세]:', error);
+        res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
     }
 };
 
@@ -218,7 +219,7 @@ exports.verifyOtp = async (req, res) => {
         res.json({ message: '2차 인증 성공!', token, allowDownload, position_level: user.position_level, role: user.role });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
-        res.status(500).json({ message: '서버 에러', error: error.message });
+        res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
     }
 };
 
@@ -273,7 +274,7 @@ exports.verifyBio = async (req, res) => {
         res.json({ message: '생체 인증 성공!', token, allowDownload, position_level: user.position_level, role: user.role });
     } catch (error) {
         console.error('[생체 인증 에러 상세]:', error);
-        res.status(500).json({ message: '서버 에러', error: error.message });
+        res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
     }
 };
 
@@ -325,7 +326,8 @@ exports.adminLogin = async (req, res) => {
         );
         res.json({ message: '관리자 로그인 성공', token });
     } catch (error) {
-        res.status(500).json({ message: '서버 에러', error: error.message });
+        console.error('[관리자 로그인 에러 상세]:', error);
+        res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
     }
 };
 
@@ -343,7 +345,7 @@ exports.logout = async (req, res) => {
     }
 };
 
-// [7] Heartbeat 세션 및 컨텍스트 검증 (토큰 재발급)
+// [7] Heartbeat 세션 및 컨텍스트 검증 (만료 임박 또는 권한 변경 시에만 토큰 재발급)
 exports.verifyContext = async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
     const { deviceId } = req.body;
@@ -353,6 +355,12 @@ exports.verifyContext = async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // 이미 블랙리스트에 등재된 토큰인지 확인
+        const [blacklisted] = await pool.query('SELECT id FROM token_blacklist WHERE jti = ?', [decoded.jti]);
+        if (blacklisted.length > 0) {
+            return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
+        }
 
         // 토큰에 박힌 기기와 요청 기기가 다르면 토큰 탈취/재사용으로 간주
         if (decoded.deviceId && decoded.deviceId !== deviceId) {
@@ -377,7 +385,6 @@ exports.verifyContext = async (req, res) => {
         }
 
         // [IP 변경 감지] 추방 없이 DB 갱신 후 클라이언트에 IP_CHANGED 상태 전달
-        // 클라이언트는 이 상태를 받아도 세션을 유지하고, 필요시 UI 경고만 표시
         let ipChanged = false;
         if (device.last_ip_address && device.last_ip_address !== currentIp) {
             console.log(`[IP 변경 감지] ${decoded.email} - ${device.last_ip_address} → ${currentIp} (세션 유지)`);
@@ -398,29 +405,42 @@ exports.verifyContext = async (req, res) => {
 
         // 최신 기기 소유 형태 기준으로 다운로드 권한 재산정
         const allowDownload = device.device_type !== 'BYOD';
+        const nextRole = user.role || decoded.role;
+        const nextDepartment = user.department || decoded.department;
+        const nextPositionLevel = user.position_level !== undefined ? user.position_level : decoded.position_level;
 
-        const newToken = jwt.sign(
-            {
-                userId: decoded.userId,
-                email: decoded.email,
-                role: user.role || decoded.role,
-                department: user.department || decoded.department,
-                position_level: user.position_level !== undefined ? user.position_level : decoded.position_level,
-                jti: randomUUID(),
-                deviceId,
-                allowDownload
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '15m' }
-        );
+        // 만료까지 남은 시간이 5분 이하이거나 권한/소유형태가 변경된 경우에만 새 토큰 발급 (불필요한 30초마다 중복 발급 방지)
+        const remainingMs = (decoded.exp * 1000) - Date.now();
+        const permissionChanged =
+            decoded.allowDownload !== allowDownload ||
+            decoded.role !== nextRole ||
+            decoded.department !== nextDepartment ||
+            decoded.position_level !== nextPositionLevel;
+
+        let activeToken = token;
+        if (remainingMs <= 5 * 60 * 1000 || permissionChanged) {
+            activeToken = jwt.sign(
+                {
+                    userId: decoded.userId,
+                    email: decoded.email,
+                    role: nextRole,
+                    department: nextDepartment,
+                    position_level: nextPositionLevel,
+                    jti: randomUUID(),
+                    deviceId,
+                    allowDownload
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '15m' }
+            );
+        }
+
         res.json({ 
-            // IP_CHANGED: 네트워크 환경 변화 감지됨 (세션은 유지)
-            // SAFE: 완전 정상
             status: ipChanged ? 'IP_CHANGED' : 'SAFE', 
-            token: newToken, 
+            token: activeToken, 
             allowDownload,
-            position_level: user.position_level !== undefined ? user.position_level : decoded.position_level,
-            role: user.role || decoded.role
+            position_level: nextPositionLevel,
+            role: nextRole
         });
     } catch (error) {
         res.status(401).json({ action: 'TERMINATE', message: '세션이 만료되었습니다.' });

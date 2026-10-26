@@ -19,7 +19,8 @@ router.get('/stats', async (req, res) => {
             deniedToday: deniedLogs[0].total
         });
     } catch (error) {
-        res.status(500).json({ message: '통계 조회 실패', error: error.message });
+        console.error('[통계 조회 에러]:', error);
+        res.status(500).json({ message: '통계 조회 실패' });
     }
 });
 
@@ -38,7 +39,8 @@ router.get('/stats/trend', async (req, res) => {
         `);
         res.json(trend);
     } catch (error) {
-        res.status(500).json({ message: '트렌드 조회 실패', error: error.message });
+        console.error('[트렌드 조회 에러]:', error);
+        res.status(500).json({ message: '트렌드 조회 실패' });
     }
 });
 
@@ -60,7 +62,8 @@ router.get('/stats/top-risky', async (req, res) => {
         `);
         res.json(topRisky);
     } catch (error) {
-        res.status(500).json({ message: 'TOP 5 조회 실패', error: error.message });
+        console.error('[TOP 5 조회 에러]:', error);
+        res.status(500).json({ message: 'TOP 5 조회 실패' });
     }
 });
 
@@ -82,7 +85,8 @@ router.get('/users', async (req, res) => {
         `);
         res.json(users);
     } catch (error) {
-        res.status(500).json({ message: '유저 목록 조회 실패', error: error.message });
+        console.error('[유저 목록 조회 에러]:', error);
+        res.status(500).json({ message: '유저 목록 조회 실패' });
     }
 });
 
@@ -96,7 +100,8 @@ router.get('/users/:id', async (req, res) => {
         if (!users[0]) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         res.json(users[0]);
     } catch (error) {
-        res.status(500).json({ message: '유저 조회 실패', error: error.message });
+        console.error('[단건 유저 조회 에러]:', error);
+        res.status(500).json({ message: '유저 조회 실패' });
     }
 });
 
@@ -119,7 +124,8 @@ router.post('/users', async (req, res) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ message: '이미 존재하는 이메일입니다.' });
         }
-        res.status(500).json({ message: '유저 생성 실패', error: error.message });
+        console.error('[유저 생성 에러]:', error);
+        res.status(500).json({ message: '유저 생성 실패' });
     }
 });
 
@@ -145,7 +151,8 @@ router.put('/users/:id', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         res.json({ message: '임직원 정보가 수정되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '임직원 정보 수정 실패', error: error.message });
+        console.error('[임직원 수정 에러]:', error);
+        res.status(500).json({ message: '임직원 정보 수정 실패' });
     }
 });
 
@@ -165,7 +172,8 @@ router.delete('/users/:id', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '임직원을 찾을 수 없습니다.' });
         res.json({ message: '임직원이 영구적으로 삭제되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '임직원 삭제 실패', error: error.message });
+        console.error('[임직원 삭제 에러]:', error);
+        res.status(500).json({ message: '임직원 삭제 실패' });
     }
 });
 
@@ -180,7 +188,8 @@ router.get('/devices', async (req, res) => {
         `);
         res.json(devices);
     } catch (error) {
-        res.status(500).json({ message: '기기 목록 조회 실패', error: error.message });
+        console.error('[기기 목록 조회 에러]:', error);
+        res.status(500).json({ message: '기기 목록 조회 실패' });
     }
 });
 
@@ -201,7 +210,8 @@ router.get('/logs', async (req, res) => {
 
         res.json({ logs, total, page, totalPages: Math.ceil(total / limit) });
     } catch (error) {
-        res.status(500).json({ message: '로그 조회 실패', error: error.message });
+        console.error('[로그 조회 에러]:', error);
+        res.status(500).json({ message: '로그 조회 실패' });
     }
 });
 
@@ -217,7 +227,8 @@ router.get('/logs/high-risk', async (req, res) => {
         `);
         res.json(logs);
     } catch (error) {
-        res.status(500).json({ message: '고위험 로그 조회 실패', error: error.message });
+        console.error('[고위험 로그 조회 에러]:', error);
+        res.status(500).json({ message: '고위험 로그 조회 실패' });
     }
 });
 
@@ -228,7 +239,8 @@ router.patch('/devices/:id/approve', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기가 성공적으로 인가되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '기기 승인 실패', error: error.message });
+        console.error('[기기 승인 에러]:', error);
+        res.status(500).json({ message: '기기 승인 실패' });
     }
 });
 
@@ -239,7 +251,8 @@ router.patch('/devices/:id/revoke', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기가 차단(신뢰 해제)되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '기기 해제 실패', error: error.message });
+        console.error('[기기 차단 에러]:', error);
+        res.status(500).json({ message: '기기 해제 실패' });
     }
 });
 
@@ -262,7 +275,8 @@ router.patch('/devices/:id/type', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기 소유 형태가 변경되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '기기 소유 형태 변경 실패', error: error.message });
+        console.error('[기기 소유 형태 변경 에러]:', error);
+        res.status(500).json({ message: '기기 소유 형태 변경 실패' });
     }
 });
 
@@ -273,7 +287,8 @@ router.delete('/devices/:id', async (req, res) => {
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기가 영구적으로 삭제되었습니다.' });
     } catch (error) {
-        res.status(500).json({ message: '기기 삭제 실패', error: error.message });
+        console.error('[기기 삭제 에러]:', error);
+        res.status(500).json({ message: '기기 삭제 실패' });
     }
 });
 
