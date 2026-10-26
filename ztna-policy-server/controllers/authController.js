@@ -7,32 +7,9 @@ const { loginLimiter, otpLimiter } = require('../middleware/rateLimiter');
 const { evaluateRisk } = require('../services/riskEngine');
 const { getClientIp } = require('../utils/ip');
 
-// [1] 회원가입
-exports.signup = async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ message: '이메일과 비밀번호는 필수입니다.' });
-    }
-    if (password.length < 6) {
-        return res.status(400).json({ message: '비밀번호는 6자 이상이어야 합니다.' });
-    }
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const [result] = await pool.query(
-            'INSERT INTO users (email, password_hash) VALUES (?, ?)', 
-            [email, hashedPassword]
-        );
-        res.status(201).json({ message: '회원가입 성공!', userId: result.insertId });
-    } catch (error) {
-        res.status(500).json({ message: '회원가입 실패', error: error.message });
-    }
-};
-
-// [2] 로그인 (ZTNA PDP 위험 평가 포함)
+// [1] 로그인 (ZTNA PDP 위험 평가 포함)
 exports.login = async (req, res) => {
-    const { email, password, deviceId, isRooted, latitude, longitude, isWifi, batteryLevel, previousBatteryLevel } = req.body;
+    const { email, password, deviceId, isRooted, latitude, longitude } = req.body;
 
     if (!email || !password || !deviceId) {
         return res.status(400).json({ message: '이메일, 비밀번호, 기기 정보는 필수입니다.' });
@@ -53,6 +30,13 @@ exports.login = async (req, res) => {
 
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
             return res.status(401).json({ message: '이메일이나 비밀번호가 일치하지 않습니다.' });
+        }
+        if (user.is_active === 0) {
+            await pool.query(
+                'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, NULL, ?, 100, ?, ?, ?)',
+                [user.id, ipAddress, 'DENY', '관리자에 의해 정지된 계정 접근 시도', loginHour]
+            );
+            return res.status(403).json({ message: '관리자에 의해 정지된 계정입니다.' });
         }
 
         const [devices] = await pool.query('SELECT * FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
@@ -172,6 +156,7 @@ exports.verifyOtp = async (req, res) => {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
         if (!user) return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
+        if (user.is_active === 0) return res.status(403).json({ message: '관리자에 의해 정지된 계정입니다.' });
         if (!user.otp_code || !user.otp_expiry) return res.status(401).json({ message: '유효한 OTP 요청이 없습니다. 다시 로그인해주세요.' });
         if (new Date() > new Date(user.otp_expiry)) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
@@ -249,6 +234,7 @@ exports.verifyBio = async (req, res) => {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         const user = users[0];
         if (!user) return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
+        if (user.is_active === 0) return res.status(403).json({ message: '관리자에 의해 정지된 계정입니다.' });
         if (!user.otp_code || !user.otp_expiry) return res.status(401).json({ message: '유효한 2차 인증 요청이 없습니다.' });
         if (new Date() > new Date(user.otp_expiry)) {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
@@ -268,6 +254,8 @@ exports.verifyBio = async (req, res) => {
         await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
             [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
         
+        otpLimiter.resetKey(ipAddress);
+
         const isBYOD = devices[0]?.device_type === 'BYOD';
         const allowDownload = !isBYOD;
 
@@ -400,8 +388,13 @@ exports.verifyContext = async (req, res) => {
             ipChanged = true;
         }
 
-        const [users] = await pool.query('SELECT role, department, position_level FROM users WHERE id = ?', [decoded.userId]);
-        const user = users[0] || decoded;
+        const [users] = await pool.query('SELECT role, department, position_level, is_active FROM users WHERE id = ?', [decoded.userId]);
+        if (!users[0] || users[0].is_active === 0) {
+            await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
+                [decoded.jti, new Date(decoded.exp * 1000)]);
+            return res.status(403).json({ action: 'TERMINATE', message: '관리자에 의해 계정이 정지되었습니다. 세션이 종료됩니다.' });
+        }
+        const user = users[0];
 
         // 최신 기기 소유 형태 기준으로 다운로드 권한 재산정
         const allowDownload = device.device_type !== 'BYOD';

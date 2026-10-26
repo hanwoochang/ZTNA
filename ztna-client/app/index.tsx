@@ -9,7 +9,6 @@ import { POLICY_SERVER_URL } from '../constants/config';
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
 import { getDeviceId } from '../utils/deviceId';
 import { getLocation } from '../utils/location';
-import { getDeviceContext, DeviceContext } from '../utils/deviceContext';
 import { useAuth } from '../hooks/useAuth';
 import { useHeartbeat } from '../hooks/useHeartbeat';
 
@@ -25,7 +24,6 @@ export default function HomeScreen() {
     const [ipAddress, setIpAddress] = useState('수집 중...');
     const [isDeviceSafe, setIsDeviceSafe] = useState(true);
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-    const [deviceContext, setDeviceContext] = useState<DeviceContext | null>(null);
 
     const {
         isLoggedIn, secretData, showOtpInput, otp, setShowOtpInput, setOtp, otpError, loginError, isLoading,
@@ -49,9 +47,6 @@ export default function HomeScreen() {
 
             const currentLocation = await getLocation();
             setLocation(currentLocation);
-
-            const context = await getDeviceContext();
-            setDeviceContext(context);
 
             try {
                 let ip = '';
@@ -110,7 +105,7 @@ export default function HomeScreen() {
             otpError={otpError}
             isLoading={isLoading}
             handleVerifyOtp={() => { Keyboard.dismiss(); handleVerifyOtp(email, deviceId, location); }}
-            handleResendOtp={() => handleResendOtp(email, password, deviceId, location, deviceContext)}
+            handleResendOtp={() => handleResendOtp(email, password, deviceId, location)}
             onBack={() => { 
                 setShowOtpInput(false);
                 setOtp(''); }}
@@ -132,7 +127,7 @@ export default function HomeScreen() {
                     Alert.alert('보안 컨텍스트 수집 중', '네트워크 및 기기 보안 정보를 수집하는 중입니다. 잠시만 기다려주세요.', [{ text: '확인' }]);
                     return;
                 }
-                handleLogin(email, password, deviceId, location, deviceContext); 
+                handleLogin(email, password, deviceId, location); 
             }}
         />
     );

@@ -13,8 +13,8 @@
 
 *   **APK 파일 직접 다운로드 URL:**  
     [https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk](https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk)
-*   **Expo 공식 빌드 페이지 (PC 화면에서 QR 스캔 가능):**  
-    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/93a4ad41-8c75-4759-8a93-93307a1f1948](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/93a4ad41-8c75-4759-8a93-93307a1f1948)
+*   **Expo 공식 최신 빌드 페이지 (PC 화면에서 QR 스캔 가능):**  
+    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/4a2aeb2b-3e46-4f2b-8b05-079413cad4ad](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/4a2aeb2b-3e46-4f2b-8b05-079413cad4ad)
 
 ### [2단계] 보안 설정 및 설치 진행
 1. 다운로드가 완료되면 상단 알림창을 내리거나, 스마트폰의 **[내 파일] -> [다운로드]** 폴더로 이동합니다.

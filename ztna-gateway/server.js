@@ -58,13 +58,18 @@ const verifyToken = async (req, res, next) => {
             }
         }
 
-        // 실시간 사용자 직급 및 권한 DB 동기화 (토큰 재발급 없이도 즉시 반영)
-        const [freshUsers] = await pool.query('SELECT role, department, position_level FROM users WHERE id = ?', [decoded.userId]);
-        if (freshUsers.length > 0) {
-            decoded.role = freshUsers[0].role;
-            decoded.department = freshUsers[0].department;
-            decoded.position_level = freshUsers[0].position_level;
+        // 실시간 사용자 직급, 권한 및 계정 정지 여부 DB 동기화 (토큰 재발급 없이도 즉시 반영)
+        const [freshUsers] = await pool.query('SELECT role, department, position_level, is_active FROM users WHERE id = ?', [decoded.userId]);
+        if (!freshUsers[0] || freshUsers[0].is_active === 0) {
+            console.log(`[강제 튕김] 정지되었거나 삭제된 계정 접근 차단! (${decoded.email})`);
+            return res.status(401).json({
+                message: '관리자에 의해 계정이 정지되었습니다. 세션이 차단됩니다.',
+                revoked: true
+            });
         }
+        decoded.role = freshUsers[0].role;
+        decoded.department = freshUsers[0].department;
+        decoded.position_level = freshUsers[0].position_level;
 
         req.user = decoded;
         console.log(`[통과] ${req.user.email} 님이 내부망에 접근합니다. (직급Lv: ${req.user.position_level}, 권한: ${req.user.role})`);

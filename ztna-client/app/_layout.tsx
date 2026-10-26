@@ -13,7 +13,6 @@ function RootLayoutNav() {
       contentStyle: { backgroundColor: isDark ? '#121212' : '#f0f4f8' }
     }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
     </Stack>
   );
 }

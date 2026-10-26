@@ -34,7 +34,7 @@ export const useAuth = () => {
         }
     };
 
-    const handleLogin = async (email: string, password: string, deviceId: string, location: any, deviceContext: any) => {
+    const handleLogin = async (email: string, password: string, deviceId: string, location: any) => {
         setIsLoading(true);
         const security = await checkDeviceSecurity();
         if (!security.isSafe) {
@@ -50,10 +50,7 @@ export const useAuth = () => {
                 email, password, deviceId,
                 isRooted: false,
                 latitude: location?.latitude || null,
-                longitude: location?.longitude || null,
-                isWifi: deviceContext?.isWifi ?? true,
-                batteryLevel: deviceContext?.batteryLevel ?? 1,
-                previousBatteryLevel: deviceContext?.previousBatteryLevel ?? null
+                longitude: location?.longitude || null
             });
 
             if (loginResponse.data.requiresApproval) {
@@ -149,17 +146,14 @@ export const useAuth = () => {
         }
     };
 
-    const handleResendOtp = async (email: string, password: string, deviceId: string, location: any, deviceContext: any) => {
+    const handleResendOtp = async (email: string, password: string, deviceId: string, location: any) => {
         setIsLoading(true);
         try {
             const res = await axios.post(`${POLICY_SERVER_URL}/api/login`, {
                 email, password, deviceId,
                 isRooted: false,
                 latitude: location?.latitude || null,
-                longitude: location?.longitude || null,
-                isWifi: deviceContext?.isWifi ?? true,
-                batteryLevel: deviceContext?.batteryLevel ?? 1,
-                previousBatteryLevel: deviceContext?.previousBatteryLevel ?? null
+                longitude: location?.longitude || null
             });
 
             if (res.data.requiresOtp) {
