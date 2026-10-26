@@ -17,7 +17,14 @@ router.post('/verify-otp', otpLimiter, authController.verifyOtp);
 // [API 4] 생체 인증(FaceID/지문) 검증
 router.post('/verify-bio', authController.verifyBio);
 
+const { getClientIp } = require('../utils/ip');
+
 // [API 5] 관리자 전용 로그인 (어드민 대시보드 전용)
 router.post('/admin-login', loginLimiter, authController.adminLogin);
+
+// [API 6] 단말 공인 IP 확인 (모바일 데이터/웹 환경에서 0.0.0.0 방지)
+router.get('/my-ip', (req, res) => {
+    res.json({ ip: getClientIp(req) });
+});
 
 module.exports = router;

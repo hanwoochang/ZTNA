@@ -5,6 +5,7 @@ import { Alert, Keyboard } from 'react-native';
 import * as Network from 'expo-network';
 import * as Storage from '../utils/storage';
 
+import { POLICY_SERVER_URL } from '../constants/config';
 import { checkDeviceSecurity } from '../utils/deviceSecurity';
 import { getDeviceId } from '../utils/deviceId';
 import { getLocation } from '../utils/location';
@@ -55,11 +56,20 @@ export default function HomeScreen() {
             try {
                 let ip = '';
                 try {
-                    const res = await fetch('https://api.ipify.org?format=json');
+                    const res = await fetch(`${POLICY_SERVER_URL}/api/my-ip`);
                     const data = await res.json();
-                    if (data?.ip) ip = data.ip;
+                    if (data?.ip && data.ip !== '0.0.0.0') ip = data.ip;
                 } catch {
-                    // 공인 IP 조회 실패 시 로컬 인터페이스 조회로 폴백
+                    // 정책 서버 조회 실패 시 외부 IP 조회 폴백
+                }
+                if (!ip || ip === '0.0.0.0') {
+                    try {
+                        const res = await fetch('https://api.ipify.org?format=json');
+                        const data = await res.json();
+                        if (data?.ip) ip = data.ip;
+                    } catch {
+                        // 공인 IP 조회 실패 시 로컬 인터페이스 조회로 폴백
+                    }
                 }
                 if (!ip || ip === '0.0.0.0') {
                     const localIp = await Network.getIpAddressAsync();
