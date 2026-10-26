@@ -34,6 +34,12 @@ export const useHeartbeat = (isLoggedIn: boolean, deviceId: string, handleLogout
                     if (typeof response.data.allowDownload === 'boolean') {
                         await Storage.setItemAsync('allowDownload', String(response.data.allowDownload));
                     }
+                    if (response.data.position_level !== undefined) {
+                        await Storage.setItemAsync('user_position_level', String(response.data.position_level));
+                    }
+                    if (response.data.role) {
+                        await Storage.setItemAsync('user_role', String(response.data.role));
+                    }
                     // IP_CHANGED: 네트워크 환경 변화(Wi-Fi ↔ LTE 등) 감지 — 세션 유지
                     // 서버가 새 IP를 DB에 갱신했으므로 다음 Heartbeat는 정상 동작
                     if (response.data.status === 'IP_CHANGED') {

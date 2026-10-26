@@ -12,6 +12,16 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const [userPositionLevel, setUserPositionLevel] = useState(1);
     const [userRole, setUserRole] = useState('USER');
 
+    const syncStoredPermissions = async () => {
+        const storedPos = await Storage.getItemAsync('user_position_level');
+        if (storedPos) {
+            const parsed = parseInt(storedPos, 10);
+            if (!isNaN(parsed)) setUserPositionLevel(parsed);
+        }
+        const storedRole = await Storage.getItemAsync('user_role');
+        if (storedRole) setUserRole(storedRole);
+    };
+
     const handleApiError = (error: any, defaultMessage: string, silent: boolean = false) => {
         if (error.response?.status === 401 && error.response?.data?.revoked) {
             if (onForceLogout) onForceLogout(true);
@@ -322,7 +332,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     };
 
     return { 
-        isLoading, userPositionLevel, userRole,
+        isLoading, userPositionLevel, userRole, syncStoredPermissions,
         attendanceData, handleAttendance, fetchTodayAttendance,
         documents, fetchDocuments, uploadDocument, downloadDocument, deleteDocument,
         notices, noticePage, noticeTotalPages, fetchNotices, createNotice, deleteNotice, updateNotice,

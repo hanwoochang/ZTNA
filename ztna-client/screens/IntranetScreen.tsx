@@ -49,23 +49,24 @@ export const IntranetScreen = (props: Props) => {
             } else {
                 setAllowDownload(true);
             }
+            await intranet.syncStoredPermissions();
         };
         loadSettings();
 
-        // 실시간 튕김 폴링 - Gateway 경유 호출로 기기 차단/권한 변경을 감지 (30초 주기, 접근 로그 폭증 방지)
-        const heartbeatInterval = setInterval(() => {
-            intranet.fetchTodayAttendance();
-        }, 30000);
+        // Heartbeat(verify-context)가 갱신한 로컬 권한/다운로드 허용 상태를 UI에 동기화 (중복 HTTP 폴링 제거)
+        const syncInterval = setInterval(() => {
+            loadSettings();
+        }, 5000);
 
         if (Platform.OS !== 'web') {
             // ScreenCapture.preventScreenCaptureAsync(); // 캡처 허용을 위해 임시 주석 처리
             return () => {
-                clearInterval(heartbeatInterval);
+                clearInterval(syncInterval);
                 // ScreenCapture.allowScreenCaptureAsync();
             };
         }
 
-        return () => clearInterval(heartbeatInterval);
+        return () => clearInterval(syncInterval);
     }, []);
 
     useEffect(() => {
