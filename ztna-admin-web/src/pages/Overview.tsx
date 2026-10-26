@@ -11,14 +11,16 @@ export function Overview() {
 
   const fetchData = () => {
     api.get('/admin/stats').then(res => setStats(res.data)).catch(console.error);
-    api.get('/admin/logs').then(res => setLogs(res.data.logs || res.data)).catch(console.error);
+    api.get('/admin/logs?limit=10').then(res => setLogs(res.data.logs || res.data)).catch(console.error);
     api.get('/admin/stats/trend').then(res => setTrend(res.data.map((d: any) => ({ ...d, avgRisk: Number(d.avgRisk) })))).catch(console.error);
     api.get('/admin/stats/top-risky').then(res => setTopRisky(res.data.map((d: any) => ({ ...d, totalRisk: Number(d.totalRisk) })))).catch(console.error);
   };
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000); // 5초 주기 실시간 통계 및 최근 접속 로그 자동 갱신
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchData();
+    }, 15000); // 15초 주기 자동 갱신 (비활성 탭에서는 일시정지)
     return () => clearInterval(interval);
   }, []);
 

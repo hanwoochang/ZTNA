@@ -18,7 +18,8 @@ const noticesRouter = require('./routes/notices');
 const initDb = require('./config/initDb');
 initDb();
 
-// JSON 바디 파싱
+// 프록시 신뢰 및 JSON 바디 파싱
+app.set('trust proxy', 1);
 app.use(express.json());
 
 // 미들웨어 등록

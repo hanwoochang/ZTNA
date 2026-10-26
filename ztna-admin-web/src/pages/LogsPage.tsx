@@ -20,7 +20,9 @@ export function LogsPage() {
 
   useEffect(() => {
     fetchLogs(page);
-    const interval = setInterval(() => fetchLogs(page), 5000); // 5초 주기 감사 로그 자동 갱신
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchLogs(page);
+    }, 15000); // 15초 주기 감사 로그 자동 갱신
     return () => clearInterval(interval);
   }, [page]);
 

@@ -200,6 +200,11 @@ exports.verifyOtp = async (req, res) => {
             );
         }
 
+        await pool.query(
+            'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, 0, ?, ?, ?)',
+            [user.id, existing[0].id, ipAddress, 'ALLOW', '2차 인증(이메일 OTP) 통과 후 정상 진입', new Date().getHours()]
+        );
+
         otpLimiter.resetKey(ipAddress);
 
         const isBYOD = existing[0]?.device_type === 'BYOD';
@@ -230,6 +235,7 @@ exports.verifyBio = async (req, res) => {
     if (!email || !deviceId) return res.status(400).json({ message: '이메일, 기기 정보는 필수입니다.' });
 
     const ipAddress = getClientIp(req);
+    const loginHour = new Date().getHours();
 
     try {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
@@ -241,12 +247,20 @@ exports.verifyBio = async (req, res) => {
             await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
             return res.status(401).json({ message: '인증 시간이 만료되었습니다. 다시 로그인해주세요.' });
         }
+        if (user.otp_attempts >= 5) {
+            await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
+            return res.status(429).json({ message: '인증 시도 횟수 초과로 2차 인증이 무효화되었습니다. 다시 로그인해주세요.' });
+        }
 
         const [devices] = await pool.query(
-            'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+            'SELECT id, status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
             [user.id, deviceId]
         );
         if (!devices[0] || devices[0].status !== 'APPROVED') {
+            await pool.query(
+                'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, 70, ?, ?, ?)',
+                [user.id, devices[0]?.id || null, ipAddress, 'DENY', '미승인 기기에서의 생체 인증 시도 차단', loginHour]
+            );
             return res.status(403).json({ message: '미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
         }
 
@@ -254,6 +268,11 @@ exports.verifyBio = async (req, res) => {
         
         await pool.query('UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
             [ipAddress, latitude || null, longitude || null, user.id, deviceId]);
+
+        await pool.query(
+            'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, 0, ?, ?, ?)',
+            [user.id, devices[0].id, ipAddress, 'ALLOW', '2차 인증(생체 인증) 통과 후 정상 진입', loginHour]
+        );
         
         otpLimiter.resetKey(ipAddress);
 

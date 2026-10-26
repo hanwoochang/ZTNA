@@ -4,11 +4,27 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const pool = require('./config/db');
+const { getClientIp } = require('./utils/ip');
 
 const app = express();
 const port = process.env.PORT || 4000;
 
-app.use(cors());
+const allowedOrigins = [
+    'https://ztna-core.duckdns.org',
+    'http://localhost:5173',
+    'http://localhost:8081',
+    'http://localhost:3000'
+];
+
+app.set('trust proxy', 1);
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS 정책에 의해 차단된 출처입니다.'));
+    }
+}));
 
 // 블랙리스트 체크가 추가된 문지기 미들웨어
 const verifyToken = async (req, res, next) => {
@@ -34,28 +50,34 @@ const verifyToken = async (req, res, next) => {
             return res.status(401).json({ message: '접근 금지: 이미 폐기된 출입증입니다!' });
         }
 
-        // 2. 실시간 강제 차단(Revoke) 검사 및 권한 갱신 (Heartbeat / API Call)
-        if (decoded.deviceId) {
-            const [devices] = await pool.query(
-                'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
-                [decoded.userId, decoded.deviceId]
-            );
-            
-            if (!devices[0] || devices[0].status !== 'APPROVED') {
-                console.log(`[강제 튕김] 관리자에 의해 신뢰 해제된 기기 접근 차단! (${decoded.email})`);
-                // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
-                return res.status(401).json({ 
-                    message: '관리자에 의해 기기 접근이 차단/해제되었습니다. 세션이 차단됩니다.', 
-                    revoked: true 
-                });
-            }
+        // 2. ZTNA 단말기 식별자(deviceId) 필수 검증 (관리자 웹 전용 토큰 등으로 우회 진입 차단)
+        if (!decoded.deviceId) {
+            console.log(`[차단] 단말기 식별 정보(deviceId)가 없는 토큰으로 사내망 접근 시도! (${decoded.email})`);
+            return res.status(403).json({
+                message: '접근 금지: 인가된 단말기 식별 정보가 없는 토큰으로는 사내 기밀망에 접근할 수 없습니다.'
+            });
+        }
 
-            // 실시간 소유 형태(BYOD/CORPORATE) 변경 감지 및 토큰 권한 오버라이드
-            if (devices[0].device_type === 'BYOD') {
-                decoded.allowDownload = false;
-            } else if (devices[0].device_type === 'CORPORATE') {
-                decoded.allowDownload = true;
-            }
+        // 3. 실시간 강제 차단(Revoke) 검사 및 권한 갱신 (Heartbeat / API Call)
+        const [devices] = await pool.query(
+            'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+            [decoded.userId, decoded.deviceId]
+        );
+        
+        if (!devices[0] || devices[0].status !== 'APPROVED') {
+            console.log(`[강제 튕김] 관리자에 의해 신뢰 해제된 기기 접근 차단! (${decoded.email})`);
+            // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
+            return res.status(401).json({ 
+                message: '관리자에 의해 기기 접근이 차단/해제되었습니다. 세션이 차단됩니다.', 
+                revoked: true 
+            });
+        }
+
+        // 실시간 소유 형태(BYOD/CORPORATE) 변경 감지 및 토큰 권한 오버라이드
+        if (devices[0].device_type === 'BYOD') {
+            decoded.allowDownload = false;
+        } else if (devices[0].device_type === 'CORPORATE') {
+            decoded.allowDownload = true;
         }
 
         // 실시간 사용자 직급, 권한 및 계정 정지 여부 DB 동기화 (토큰 재발급 없이도 즉시 반영)
@@ -97,7 +119,8 @@ app.use('/private', verifyToken, createProxyMiddleware({
             }
         },
         proxyReq: (proxyReq, req, res) => {
-            // verifyToken 미들웨어에서 해석한 사용자 정보를 헤더에 주입하여 Target Server로 전달
+            // verifyToken 미들웨어에서 해석한 사용자 정보 및 Nginx가 검증한 실제 IP를 헤더에 주입하여 Target Server로 전달
+            proxyReq.setHeader('x-real-ip', getClientIp(req));
             if (req.user) {
                 proxyReq.setHeader('x-user-id', req.user.userId);
                 proxyReq.setHeader('x-user-email', req.user.email);

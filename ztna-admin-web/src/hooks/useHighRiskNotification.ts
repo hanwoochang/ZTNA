@@ -57,7 +57,9 @@ export function useHighRiskNotification() {
     };
 
     pollHighRiskLogs();
-    const interval = setInterval(pollHighRiskLogs, 5000); // 5초 주기 고위험 차단 로그 감지
+    const interval = setInterval(() => {
+      if (!document.hidden) pollHighRiskLogs();
+    }, 15000); // 15초 주기 고위험 차단 로그 감지
     return () => clearInterval(interval);
   }, []);
 

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { getClientIp } = require('../utils/ip');
 
 module.exports = async (req, res, next) => {
     const userId = req.headers['x-user-id'];
@@ -9,10 +10,7 @@ module.exports = async (req, res, next) => {
         const isAttendanceStatusPoll = req.method === 'GET' && req.originalUrl.startsWith('/api/attendance/today');
         if (!isAttendanceStatusPoll) {
             try {
-                // 원격 클라이언트 실제 IP 추적 시도
-                let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-                if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
-                if (ipAddress === '::1') ipAddress = '127.0.0.1';
+                const ipAddress = getClientIp(req);
 
                 await pool.query(
                     'INSERT INTO intranet_access_logs (user_id, user_email, api_endpoint, method, ip_address) VALUES (?, ?, ?, ?, ?)',

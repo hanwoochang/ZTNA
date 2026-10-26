@@ -9,7 +9,9 @@ export function DevicesPage() {
   const fetchDevices = () => api.get('/admin/devices').then(res => setDevices(res.data)).catch(console.error);
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 5000); // 5초 주기로 신규 단말기 등록(PENDING) 및 접속 상태 자동 갱신
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchDevices();
+    }, 15000); // 15초 주기로 신규 단말기 등록(PENDING) 및 접속 상태 자동 갱신
     return () => clearInterval(interval);
   }, []);
 

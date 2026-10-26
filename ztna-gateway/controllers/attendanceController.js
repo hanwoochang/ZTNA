@@ -1,12 +1,11 @@
 const pool = require('../config/db');
+const { getClientIp } = require('../utils/ip');
 
 exports.checkIn = async (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ message: '사용자 식별 불가 (출입증 없음)' });
 
-    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-    if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
-    if (ipAddress === '::1') ipAddress = '127.0.0.1';
+    const ipAddress = getClientIp(req);
 
     const today = new Date();
     const dateRecord = today.toISOString().split('T')[0];
@@ -29,9 +28,7 @@ exports.checkOut = async (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ message: '사용자 식별 불가 (출입증 없음)' });
 
-    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-    if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
-    if (ipAddress === '::1') ipAddress = '127.0.0.1';
+    const ipAddress = getClientIp(req);
 
     const today = new Date();
     const dateRecord = today.toISOString().split('T')[0];

@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const { getClientIp } = require('../utils/ip');
 
 exports.getDocuments = async (req, res) => {
     try {
@@ -13,31 +14,41 @@ exports.getDocuments = async (req, res) => {
 };
 
 exports.uploadDocument = async (req, res) => {
+    const cleanupUploadedFile = () => {
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { console.error('임시 업로드 파일 삭제 실패:', e.message); }
+        }
+    };
+
     const allowUpload = req.headers['x-allow-download'];
     if (allowUpload === 'false') {
+        cleanupUploadedFile();
         return res.status(403).json({ message: 'BYOD 기기에서는 기밀 문서를 업로드할 수 없습니다.' });
     }
 
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
-    const userPos = parseInt(req.headers['x-user-position-level'] || '1');
+    const userPos = parseInt(req.headers['x-user-position-level'] || '1', 10);
     if (!isAdminRole && userPos < 3) {
+        cleanupUploadedFile();
         return res.status(403).json({ message: '기밀 문서 업로드 권한이 없습니다 (과장 이상만 가능).' });
     }
 
     const { title, description } = req.body;
     const author = req.headers['x-user-email']?.split('@')[0] || '익명';
     
-    if (!req.file || !title) {
+    if (!req.file || !title || !title.trim()) {
+        cleanupUploadedFile();
         return res.status(400).json({ message: '제목과 파일을 모두 입력/첨부해주세요.' });
     }
 
     try {
-        const [result] = await pool.query(
+        await pool.query(
             'INSERT INTO intranet_documents (title, description, filename, original_name, author) VALUES (?, ?, ?, ?, ?)',
-            [title, description || '', req.file.filename, req.file.originalname, author]
+            [title.trim(), description || '', req.file.filename, req.file.originalname, author]
         );
         res.json({ message: '문서가 성공적으로 업로드되었습니다.' });
     } catch (err) {
+        cleanupUploadedFile();
         res.status(500).json({ message: '문서 업로드 실패' });
     }
 };
@@ -109,9 +120,7 @@ exports.downloadSecretPdf = (req, res) => {
         }
         
         // IP 추적
-        let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
-        if (ipAddress.includes('::ffff:')) ipAddress = ipAddress.split('::ffff:')[1];
-        if (ipAddress === '::1') ipAddress = '127.0.0.1';
+        const ipAddress = getClientIp(req);
 
         // 현재 시간 계산 (영어 포맷으로 변경하여 PDF 기본 폰트 충돌 방지)
         const timestamp = new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
