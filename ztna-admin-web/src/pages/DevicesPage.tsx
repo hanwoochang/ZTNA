@@ -7,7 +7,11 @@ export function DevicesPage() {
   const [search, setSearch] = useState('');
 
   const fetchDevices = () => api.get('/admin/devices').then(res => setDevices(res.data)).catch(console.error);
-  useEffect(() => { fetchDevices(); }, []);
+  useEffect(() => {
+    fetchDevices();
+    const interval = setInterval(fetchDevices, 5000); // 5초 주기로 신규 단말기 등록(PENDING) 및 접속 상태 자동 갱신
+    return () => clearInterval(interval);
+  }, []);
 
   const handleApprove = async (id: number) => {
     try {

@@ -57,7 +57,7 @@ export function useHighRiskNotification() {
     };
 
     pollHighRiskLogs();
-    const interval = setInterval(pollHighRiskLogs, 10000); // 10초 (3초 → DB 부하 과다)
+    const interval = setInterval(pollHighRiskLogs, 5000); // 5초 주기 고위험 차단 로그 감지
     return () => clearInterval(interval);
   }, []);
 

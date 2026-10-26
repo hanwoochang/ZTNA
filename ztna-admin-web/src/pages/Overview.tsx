@@ -18,7 +18,7 @@ export function Overview() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // 30초 (통계 데이터는 실시간 불필요)
+    const interval = setInterval(fetchData, 5000); // 5초 주기 실시간 통계 및 최근 접속 로그 자동 갱신
     return () => clearInterval(interval);
   }, []);
 
