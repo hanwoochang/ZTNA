@@ -1,7 +1,7 @@
 //조립
 
-import { useState, useEffect } from 'react';
-import { Alert, Keyboard } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Alert, Keyboard, AppState } from 'react-native';
 import * as Network from 'expo-network';
 import * as Storage from '../utils/storage';
 
@@ -33,25 +33,14 @@ export default function HomeScreen() {
 
     useHeartbeat(isLoggedIn, deviceId, handleLogout);
 
-    useEffect(() => {
-        async function collectContext() {
-            const security = await checkDeviceSecurity();
-            if (!security.isSafe) {
-                setIsDeviceSafe(false);
-                Alert.alert('보안 위협 감지', `${security.reason}입니다.\n보안 정책에 의해 앱 사용이 차단됩니다.`, [{ text: '확인' }]);
-                return;
-            }
-
-            const id = await getDeviceId();
-            setDeviceId(id);
-
-            const currentLocation = await getLocation();
-            setLocation(currentLocation);
-
+    // IP 주소 및 GPS 위치를 최신 상태로 새로 수집하는 함수 (포그라운드 복귀 및 로그인 직전 호출)
+    const refreshNetworkAndLocation = useCallback(async () => {
+        const currentLocationPromise = getLocation();
+        const ipPromise = (async () => {
             try {
                 let ip = '';
                 try {
-                    const res = await fetch(`${POLICY_SERVER_URL}/api/my-ip`);
+                    const res = await fetch(`${POLICY_SERVER_URL}/api/my-ip`, { cache: 'no-store' });
                     const data = await res.json();
                     if (data?.ip && data.ip !== '0.0.0.0') ip = data.ip;
                 } catch {
@@ -59,7 +48,7 @@ export default function HomeScreen() {
                 }
                 if (!ip || ip === '0.0.0.0') {
                     try {
-                        const res = await fetch('https://api.ipify.org?format=json');
+                        const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
                         const data = await res.json();
                         if (data?.ip) ip = data.ip;
                     } catch {
@@ -72,10 +61,33 @@ export default function HomeScreen() {
                         ip = localIp;
                     }
                 }
-                setIpAddress(ip || 'IP 추적 불가');
+                return ip || 'IP 추적 불가';
             } catch {
-                setIpAddress('IP 추적 불가');
+                return 'IP 추적 불가';
             }
+        })();
+
+        const [freshIp, freshLocation] = await Promise.all([ipPromise, currentLocationPromise]);
+        setIpAddress(freshIp);
+        if (freshLocation) {
+            setLocation(freshLocation);
+        }
+        return { freshIp, freshLocation };
+    }, []);
+
+    useEffect(() => {
+        async function collectContext() {
+            const security = await checkDeviceSecurity();
+            if (!security.isSafe) {
+                setIsDeviceSafe(false);
+                Alert.alert('보안 위협 감지', `${security.reason}입니다.\n보안 정책에 의해 앱 사용이 차단됩니다.`, [{ text: '확인' }]);
+                return;
+            }
+
+            const id = await getDeviceId();
+            setDeviceId(id);
+
+            await refreshNetworkAndLocation();
 
             try {
                 // ZTNA 보안 정책: 앱 구동 시 자동 로그인 금지 및 기존 토큰 초기화
@@ -85,8 +97,23 @@ export default function HomeScreen() {
             }
         }
         collectContext();
-    }, []);
+    }, [refreshNetworkAndLocation]);
 
+    // 앱이 백그라운드에서 다시 켜질 때(active) 또는 로그아웃 상태로 돌아올 때마다 최신 IP/GPS 자동 갱신
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                refreshNetworkAndLocation();
+            }
+        });
+        return () => subscription.remove();
+    }, [refreshNetworkAndLocation]);
+
+    useEffect(() => {
+        if (!isLoggedIn && deviceId !== '수집 중...') {
+            refreshNetworkAndLocation();
+        }
+    }, [isLoggedIn, deviceId, refreshNetworkAndLocation]);
 
     if (!isDeviceSafe || isBlockedByGateway) return <BlockedScreen handleLogout={() => setIsBlockedByGateway(false)} />;
     if (isLoggedIn) return (
@@ -121,13 +148,14 @@ export default function HomeScreen() {
             deviceId={deviceId}
             loginError={loginError}
             isLoading={isLoading}
-            handleLogin={() => { 
+            handleLogin={async () => { 
                 Keyboard.dismiss(); 
                 if (ipAddress === '수집 중...' || deviceId === '수집 중...') {
                     Alert.alert('보안 컨텍스트 수집 중', '네트워크 및 기기 보안 정보를 수집하는 중입니다. 잠시만 기다려주세요.', [{ text: '확인' }]);
                     return;
                 }
-                handleLogin(email, password, deviceId, location); 
+                const { freshLocation } = await refreshNetworkAndLocation();
+                handleLogin(email, password, deviceId, freshLocation || location); 
             }}
         />
     );

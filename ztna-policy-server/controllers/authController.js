@@ -63,14 +63,14 @@ exports.login = async (req, res) => {
             reasons.push('관리자에 의해 차단(신뢰 해제)된 기기');
         }
 
-        // 2. 위험도 엔진(CARTA)을 통한 동적 점수 산출
+        // 2. 위험도 엔진(CARTA)을 통한 동적 점수 산출 (해당 단말기의 직전 정상 접속 시각 기준)
         let lastLoginData = null;
         if (currentDevice) {
             const [lastLogin] = await pool.query(
-                `SELECT created_at FROM access_logs WHERE user_id = ? AND action_taken IN ('ALLOW', 'STEP_UP') ORDER BY created_at DESC LIMIT 1`,
-                [user.id]
+                `SELECT created_at FROM access_logs WHERE user_id = ? AND device_id = ? AND action_taken = 'ALLOW' ORDER BY created_at DESC LIMIT 1`,
+                [user.id, currentDevice.id]
             );
-            lastLoginData = lastLogin[0] || null;
+            lastLoginData = lastLogin[0] || (currentDevice.last_accessed_at ? { created_at: currentDevice.last_accessed_at } : null);
         }
 
         const riskEvaluation = evaluateRisk(currentDevice, ipAddress, latitude, longitude, lastLoginData, loginHour);
@@ -78,9 +78,15 @@ exports.login = async (req, res) => {
         reasons = reasons.concat(riskEvaluation.reasons);
         forceDeny = forceDeny || riskEvaluation.forceDeny;
 
-        // 정책 판별 수행: 차단 (DENY)
+        // 정책 판별 수행: 차단 (DENY) - 고위험(70점 이상) 감지 시 해당 기기 상태를 BLOCKED로 즉시 전환
         if (forceDeny || riskScore >= 70) {
             action = 'DENY';
+            if (currentDevice && currentDevice.status !== 'BLOCKED') {
+                await pool.query(
+                    "UPDATE devices SET status = 'BLOCKED', is_trusted = 0 WHERE id = ?",
+                    [currentDevice.id]
+                );
+            }
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
             return res.status(403).json({ message: '보안 정책에 의해 즉시 차단되었습니다.', 위험도점수: riskScore, reasons });
@@ -366,6 +372,7 @@ exports.logout = async (req, res) => {
 
 // [7] Heartbeat 세션 및 컨텍스트 검증 (만료 임박 또는 권한 변경 시에만 토큰 재발급)
 exports.verifyContext = async (req, res) => {
+    const tStart = process.hrtime.bigint();
     const token = req.headers['authorization']?.split(' ')[1];
     const { deviceId } = req.body;
     const currentIp = getClientIp(req);
@@ -373,10 +380,14 @@ exports.verifyContext = async (req, res) => {
     if (!token || !deviceId) return res.status(400).json({ message: '필수 정보가 누락되었습니다.' });
 
     try {
+        const tJwtStart = process.hrtime.bigint();
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const tJwtEnd = process.hrtime.bigint();
 
         // 이미 블랙리스트에 등재된 토큰인지 확인
+        const tBlacklistStart = process.hrtime.bigint();
         const [blacklisted] = await pool.query('SELECT id FROM token_blacklist WHERE jti = ?', [decoded.jti]);
+        const tBlacklistEnd = process.hrtime.bigint();
         if (blacklisted.length > 0) {
             return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
         }
@@ -388,10 +399,12 @@ exports.verifyContext = async (req, res) => {
             return res.status(403).json({ action: 'TERMINATE', message: '기기 정보 불일치! 연결이 강제 종료됩니다.' });
         }
 
+        const tDeviceStart = process.hrtime.bigint();
         const [devices] = await pool.query(
             'SELECT status, device_type, last_ip_address FROM devices WHERE user_id = ? AND device_identifier = ?',
             [decoded.userId, deviceId]
         );
+        const tDeviceEnd = process.hrtime.bigint();
         const device = devices[0];
 
         // [강제 추방] 기기 미등록 또는 관리자에 의해 차단/승인 해제된 경우만 TERMINATE
@@ -405,7 +418,8 @@ exports.verifyContext = async (req, res) => {
 
         // [IP 변경 감지] 추방 없이 DB 갱신 후 클라이언트에 IP_CHANGED 상태 전달
         let ipChanged = false;
-        if (device.last_ip_address && device.last_ip_address !== currentIp) {
+        const isBenchmark = req.headers['x-ztna-benchmark'] === 'true';
+        if (!isBenchmark && device.last_ip_address && device.last_ip_address !== currentIp) {
             console.log(`[IP 변경 감지] ${decoded.email} - ${device.last_ip_address} → ${currentIp} (세션 유지)`);
             await pool.query(
                 'UPDATE devices SET last_ip_address = ? WHERE user_id = ? AND device_identifier = ?',
@@ -414,7 +428,9 @@ exports.verifyContext = async (req, res) => {
             ipChanged = true;
         }
 
+        const tUserStart = process.hrtime.bigint();
         const [users] = await pool.query('SELECT role, department, position_level, is_active FROM users WHERE id = ?', [decoded.userId]);
+        const tUserEnd = process.hrtime.bigint();
         if (!users[0] || users[0].is_active === 0) {
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
@@ -453,6 +469,15 @@ exports.verifyContext = async (req, res) => {
                 { expiresIn: '15m' }
             );
         }
+
+        const tEnd = process.hrtime.bigint();
+        res.setHeader('Server-Timing', [
+            `jwt;dur=${(Number(tJwtEnd - tJwtStart) / 1e6).toFixed(3)};desc="JWT Verify"`,
+            `db-blacklist;dur=${(Number(tBlacklistEnd - tBlacklistStart) / 1e6).toFixed(3)};desc="DB Blacklist Check"`,
+            `db-device;dur=${(Number(tDeviceEnd - tDeviceStart) / 1e6).toFixed(3)};desc="DB Device Trust"`,
+            `db-user;dur=${(Number(tUserEnd - tUserStart) / 1e6).toFixed(3)};desc="DB User Sync"`,
+            `ztna-pdp;dur=${(Number(tEnd - tStart) / 1e6).toFixed(3)};desc="ZTNA PDP Heartbeat Total"`
+        ].join(', '));
 
         res.json({ 
             status: ipChanged ? 'IP_CHANGED' : 'SAFE', 

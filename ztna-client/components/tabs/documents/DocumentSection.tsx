@@ -33,24 +33,28 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
     const isDesktop = width > 768;
     const docScrollRef = useRef<any>(null);
 
+    const [containerWidth, setContainerWidth] = useState(0);
     const [currentDocIndex, setCurrentDocIndex] = useState(0);
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
     const [docTitle, setDocTitle] = useState('');
     const [docDesc, setDocDesc] = useState('');
     const [selectedFile, setSelectedFile] = useState<any>(null);
 
+    const fallbackWidth = isDesktop ? Math.min(752, Math.max(280, width - 260 - 48)) : width - 48;
+    const cardWidth = containerWidth > 0 ? containerWidth : fallbackWidth;
+
     const totalItems = (documents?.length || 0) + (allowDownload ? 1 : 0);
 
     const slideLeft = () => {
         if (currentDocIndex > 0) {
-            docScrollRef.current?.scrollTo({ x: (currentDocIndex - 1) * (isDesktop ? 752 : width - 48), animated: true });
+            docScrollRef.current?.scrollTo({ x: (currentDocIndex - 1) * cardWidth, animated: true });
             setCurrentDocIndex(currentDocIndex - 1);
         }
     };
 
     const slideRight = () => {
         if (currentDocIndex < totalItems - 1) {
-            docScrollRef.current?.scrollTo({ x: (currentDocIndex + 1) * (isDesktop ? 752 : width - 48), animated: true });
+            docScrollRef.current?.scrollTo({ x: (currentDocIndex + 1) * cardWidth, animated: true });
             setCurrentDocIndex(currentDocIndex + 1);
         }
     };
@@ -77,7 +81,7 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
     };
 
     return (
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 16 }} onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
             <Text style={[styles.heading3, { marginBottom: 12 }]}>Top Secret Documents</Text>
             <View style={{ position: 'relative' }}>
                 {isDesktop && currentDocIndex > 0 && (
@@ -109,11 +113,11 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
                         setCurrentDocIndex(Math.round(index));
                     }}
                     scrollEventThrottle={16}
-                    snapToInterval={isDesktop ? 752 : width - 48}
+                    snapToInterval={cardWidth}
                     decelerationRate="fast"
                 >
                     {isLoading && documents?.length === 0 ? (
-                        <View style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
+                        <View style={[styles.cardFeatured, { width: cardWidth, marginHorizontal: 0 }]}>
                             <SkeletonLoader height={24} width="100%" style={{ marginBottom: 12 }} />
                             <SkeletonLoader height={24} width="70%" />
                         </View>
@@ -121,7 +125,7 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
                         documents?.map((doc: any) => {
                             const canManageDocs = userRole === 'ADMIN' || userPositionLevel >= 3;
                             return (
-                                <View key={doc.id} style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0 }]}>
+                                <View key={doc.id} style={[styles.cardFeatured, { width: cardWidth, marginHorizontal: 0 }]}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <View style={{ flex: 1, marginRight: 8 }}>
                                             <Text style={[styles.infoText, { fontWeight: '700', fontSize: 18, marginBottom: 4 }]} numberOfLines={2}>{doc.title}</Text>
@@ -162,7 +166,7 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
                     
                     {allowDownload && (userRole === 'ADMIN' || userPositionLevel >= 3) && (
                         <TouchableOpacity 
-                            style={[styles.cardFeatured, { width: isDesktop ? 752 : width - 48, marginHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.borderSoft, backgroundColor: 'transparent' }]}
+                            style={[styles.cardFeatured, { width: cardWidth, marginHorizontal: 0, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: colors.borderSoft, backgroundColor: 'transparent' }]}
                             onPress={() => setUploadModalVisible(true)}
                         >
                             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>

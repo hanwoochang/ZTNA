@@ -45,7 +45,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
 
     if (isDesktop) {
         return (
-            <View style={{ flex: 1, flexDirection: 'row' }}>
+            <View style={{ flex: 1, position: 'relative' }}>
                 {/* 메인: 출퇴근 관리 */}
                 <View style={{ flex: 1 }}>
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 40, flexGrow: 1, justifyContent: 'center' }}>
@@ -97,35 +97,52 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                     </ScrollView>
                 </View>
 
-                {/* 우측 패널: 직원 리스트 */}
+                {/* 우측 오버레이 패널: 직원 리스트 */}
                 {isDirectoryOpen && (
-                    <View style={{ width: 480, borderLeftWidth: 1, borderLeftColor: colors.borderSoft, backgroundColor: colors.background }}>
-                        <ScrollView 
-                            showsVerticalScrollIndicator={true} 
-                            contentContainerStyle={{ padding: 32 }}
-                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
-                                <Icon name="users" size={24} color={colors.text} style={{ marginRight: 12 }} />
-                                <Text style={[styles.heading2, { marginBottom: 0 }]}>Employee Directory</Text>
-                            </View>
-                            <View style={{ flexDirection: 'column', gap: 12 }}>
-                                {employees?.map((emp: any) => (
-                                    <View key={emp.id} style={{ backgroundColor: colors.cardBackground, padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.borderSoft, ...Platform.select({ web: { boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)' } as any }) }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.field, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                                                <Icon name="user" size={18} color={colors.subText} />
-                                            </View>
-                                            <View>
-                                                <Text style={{ fontSize: Platform.OS === 'web' ? 18 : 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: Platform.OS === 'web' ? 16 : 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
-                                                <Text style={{ fontSize: Platform.OS === 'web' ? 16 : 12, color: colors.subText }}>{emp.department || '미배정'} / {emp.position || '사원'} · {emp.email}</Text>
+                    <>
+                        <Pressable
+                            onPress={() => setIsDirectoryOpen(false)}
+                            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.25)', zIndex: 15 }}
+                        />
+                        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: Math.min(480, width - 260), borderLeftWidth: 1, borderLeftColor: colors.borderSoft, backgroundColor: colors.background, zIndex: 20, ...Platform.select({ web: { boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.15)' } as any }) }}>
+                            <ScrollView 
+                                showsVerticalScrollIndicator={true} 
+                                contentContainerStyle={{ padding: 32 }}
+                                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Icon name="users" size={24} color={colors.text} style={{ marginRight: 12 }} />
+                                        <Text style={[styles.heading2, { marginBottom: 0 }]}>Employee Directory</Text>
+                                    </View>
+                                    <Pressable
+                                        onPress={() => setIsDirectoryOpen(false)}
+                                        style={({ hovered }) => [
+                                            { padding: 8, borderRadius: 8, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
+                                            hovered ? { backgroundColor: colors.borderSoft } : {}
+                                        ]}
+                                    >
+                                        <Icon name="x" size={18} color={colors.text} />
+                                    </Pressable>
+                                </View>
+                                <View style={{ flexDirection: 'column', gap: 12 }}>
+                                    {employees?.map((emp: any) => (
+                                        <View key={emp.id} style={{ backgroundColor: colors.cardBackground, padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.borderSoft, ...Platform.select({ web: { boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)' } as any }) }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.field, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                    <Icon name="user" size={18} color={colors.subText} />
+                                                </View>
+                                                <View>
+                                                    <Text style={{ fontSize: Platform.OS === 'web' ? 18 : 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{emp.name || '이름 미상'} <Text style={{fontSize: Platform.OS === 'web' ? 16 : 12, fontWeight: 'normal', color: '#888'}}>({emp.role})</Text></Text>
+                                                    <Text style={{ fontSize: Platform.OS === 'web' ? 16 : 12, color: colors.subText }}>{emp.department || '미배정'} / {emp.position || '사원'} · {emp.email}</Text>
+                                                </View>
                                             </View>
                                         </View>
-                                    </View>
-                                ))}
-                            </View>
-                        </ScrollView>
-                    </View>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    </>
                 )}
             </View>
         );
@@ -199,4 +216,3 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
         </View>
     );
 };
-

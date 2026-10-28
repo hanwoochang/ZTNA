@@ -22,7 +22,8 @@ app.use(cors({
             return callback(null, true);
         }
         return callback(new Error('CORS 정책에 의해 차단된 출처입니다.'));
-    }
+    },
+    exposedHeaders: ['Server-Timing']
 }));
 app.use(express.json());
 
