@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+// 로컬 루프백(127.0.0.1) 전용 내부 타겟 서버 (쿠키 미사용, ZTNA Gateway 뒤에서만 동작)
+// nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
 const app = express();
 const port = 5000;
 
@@ -18,8 +20,8 @@ const noticesRouter = require('./routes/notices');
 const initDb = require('./config/initDb');
 initDb();
 
-// 프록시 신뢰 및 JSON 바디 파싱
-app.set('trust proxy', 1);
+// 프록시 신뢰(로컬 루프백 한정) 및 JSON 바디 파싱
+app.set('trust proxy', 'loopback');
 app.use(express.json());
 
 // 미들웨어 등록

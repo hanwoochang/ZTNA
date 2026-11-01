@@ -43,7 +43,18 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
         setSelectedDate(day.dateString);
     };
 
+    const canCreateEvents = userRole === 'ADMIN' || userPositionLevel >= 2;
+    const canManageEvents = userRole === 'ADMIN' || userPositionLevel >= 3;
+
     const handleAddEvent = async () => {
+        if (!canCreateEvents) {
+            if (Platform.OS === 'web') {
+                window.alert('등록 실패\n일정 등록 권한이 없습니다 (대리 이상 가능).');
+            } else {
+                Alert.alert('등록 실패', '일정 등록 권한이 없습니다 (대리 이상 가능).');
+            }
+            return;
+        }
         if (!newEventTitle.trim()) return;
         const success = await createEvent(newEventTitle, selectedDate);
         if (success) setNewEventTitle('');
@@ -57,8 +68,6 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
             setEditEventTitle('');
         }
     };
-
-    const canManageEvents = userRole === 'ADMIN' || userPositionLevel >= 3;
 
     return (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
@@ -106,6 +115,7 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                             groupedEvents[selectedDate].map((ev: any) => {
                                 const currentUserHandle = email?.split('@')[0] || '익명';
                                 const isAuthor = ev.author === currentUserHandle || currentUserHandle === '관리자';
+                                const canEditThisEvent = canManageEvents || (userPositionLevel >= 2 && isAuthor);
                                 return (
                                     <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSoft }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
@@ -115,7 +125,7 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                                                 {ev.author && <Text style={{ fontSize: 12, color: colors.subText }}>작성자: {ev.author}</Text>}
                                             </View>
                                         </View>
-                                        {canManageEvents && (
+                                        {canEditThisEvent && (
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                 <TouchableOpacity 
                                                     onPress={() => {
@@ -153,9 +163,10 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
 
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <TextInput 
-                            style={[styles.input, { flex: 1, marginBottom: 0, marginRight: 12 }]} 
-                            placeholder="새로운 일정 추가..." 
+                            style={[styles.input, { flex: 1, marginBottom: 0, marginRight: 12, opacity: canCreateEvents ? 1 : 0.6 }]} 
+                            placeholder={canCreateEvents ? "새로운 일정 추가..." : "일정 등록은 대리 이상부터 가능합니다."} 
                             placeholderTextColor={colors.subText}
+                            editable={canCreateEvents}
                             value={newEventTitle} 
                             onChangeText={setNewEventTitle} 
                         />
@@ -166,7 +177,8 @@ export const ScheduleTab = ({ email, events, fetchEvents, createEvent, deleteEve
                                 borderRadius: 24, 
                                 backgroundColor: colors.primary, 
                                 justifyContent: 'center', 
-                                alignItems: 'center' 
+                                alignItems: 'center',
+                                opacity: canCreateEvents ? 1 : 0.5
                             }} 
                             onPress={handleAddEvent}
                         >

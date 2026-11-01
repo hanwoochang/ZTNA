@@ -28,7 +28,12 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
             return;
         }
         if (!silent) {
-            Alert.alert('통신 실패', error.response?.data?.message || defaultMessage);
+            const msg = error.response?.data?.message || defaultMessage;
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.alert(`통신 실패\n${msg}`);
+            } else {
+                Alert.alert('통신 실패', msg);
+            }
         } else {
             console.error(defaultMessage, error.response?.data || error.message);
         }
@@ -95,6 +100,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         try {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/documents?_t=${Date.now()}`, { headers });
+            handleSyncHeader(response);
             setDocuments(response.data);
         } catch (error: any) {
             handleApiError(error, '[기밀문서 목록 조회 실패]', true);
@@ -277,6 +283,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         try {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/events?_t=${Date.now()}`, { headers });
+            handleSyncHeader(response);
             setEvents(response.data);
         } catch (error: any) {
             handleApiError(error, '[일정 목록 조회 실패]', true);
@@ -290,7 +297,12 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
             await fetchEvents();
             return true;
         } catch (error: any) {
-            Alert.alert('등록 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            const msg = error.response?.data?.message || '오류가 발생했습니다.';
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.alert(`등록 실패\n${msg}`);
+            } else {
+                Alert.alert('등록 실패', msg);
+            }
             return false;
         }
     };
@@ -302,7 +314,12 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
             await fetchEvents();
             return true;
         } catch (error: any) {
-            Alert.alert('삭제 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            const msg = error.response?.data?.message || '오류가 발생했습니다.';
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.alert(`삭제 실패\n${msg}`);
+            } else {
+                Alert.alert('삭제 실패', msg);
+            }
             return false;
         }
     };
@@ -314,7 +331,12 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
             await fetchEvents();
             return true;
         } catch (error: any) {
-            Alert.alert('수정 실패', error.response?.data?.message || '오류가 발생했습니다.');
+            const msg = error.response?.data?.message || '오류가 발생했습니다.';
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.alert(`수정 실패\n${msg}`);
+            } else {
+                Alert.alert('수정 실패', msg);
+            }
             return false;
         }
     };
@@ -325,6 +347,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
         try {
             const headers = await getAuthHeader();
             const response = await axios.get(`${GATEWAY_URL}/private/api/employees?_t=${Date.now()}`, { headers });
+            handleSyncHeader(response);
             setEmployees(response.data);
         } catch (error: any) {
             handleApiError(error, '[임직원 목록 조회 실패]', true);

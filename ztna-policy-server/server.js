@@ -4,6 +4,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+// 쿠키 세션을 사용하지 않고 Authorization Bearer JWT 헤더만 사용하는 Stateless PDP 서버
+// nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
 const app = express();
 const port = 3000;
 
@@ -14,7 +16,7 @@ const allowedOrigins = [
     'http://localhost:3000'
 ];
 
-app.set('trust proxy', 1);
+app.set('trust proxy', 'loopback');
 app.use(cors({
     origin: (origin, callback) => {
         // 모바일 네이티브 앱(Origin 헤더 없음) 또는 허용된 도메인만 통과

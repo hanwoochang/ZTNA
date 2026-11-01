@@ -4,6 +4,21 @@ const path = require('path');
 const fs = require('fs');
 const { getClientIp } = require('../utils/ip');
 
+const UPLOADS_DIR = path.resolve(__dirname, '..', 'uploads');
+
+function resolveSafeUploadPath(filename) {
+    const safeName = path.basename(String(filename || ''));
+    if (!safeName || safeName === '.' || safeName === '..') {
+        return null;
+    }
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal, javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
+    const resolvedPath = path.resolve(UPLOADS_DIR, safeName);
+    if (!resolvedPath.startsWith(UPLOADS_DIR + path.sep)) {
+        return null;
+    }
+    return resolvedPath;
+}
+
 exports.getDocuments = async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT id, title, description, original_name, author, created_at FROM intranet_documents ORDER BY id DESC');
@@ -68,7 +83,10 @@ exports.deleteDocument = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '문서를 찾을 수 없습니다.' });
 
         const filename = rows[0].filename;
-        const filePath = path.join(__dirname, '..', 'uploads', filename);
+        const filePath = resolveSafeUploadPath(filename);
+        if (!filePath) {
+            return res.status(400).json({ message: '유효하지 않은 파일 경로입니다.' });
+        }
         if (fs.existsSync(filePath)) {
             try { fs.unlinkSync(filePath); } catch (e) { console.error('파일 삭제 실패:', e.message); }
         }
@@ -91,7 +109,10 @@ exports.downloadDocument = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '문서를 찾을 수 없습니다.' });
         
         const fileRecord = rows[0];
-        const filePath = path.join(__dirname, '..', 'uploads', fileRecord.filename);
+        const filePath = resolveSafeUploadPath(fileRecord.filename);
+        if (!filePath) {
+            return res.status(400).json({ message: '유효하지 않은 파일 경로입니다.' });
+        }
         
         if (fs.existsSync(filePath)) {
             res.download(filePath, fileRecord.original_name);

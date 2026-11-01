@@ -6,6 +6,8 @@ const cors = require('cors');
 const pool = require('./config/db');
 const { getClientIp } = require('./utils/ip');
 
+// 쿠키 세션을 사용하지 않고 Authorization Bearer JWT 헤더만 사용하는 Stateless PEP 서버
+// nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -16,7 +18,7 @@ const allowedOrigins = [
     'http://localhost:3000'
 ];
 
-app.set('trust proxy', 1);
+app.set('trust proxy', 'loopback');
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {

@@ -12,6 +12,13 @@ exports.getEvents = async (req, res) => {
 exports.createEvent = async (req, res) => {
     const { title, date } = req.body;
     const author = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const userRole = req.headers['x-user-role'];
+    const userPos = parseInt(req.headers['x-user-position-level'] || '1');
+
+    if (userRole !== 'ADMIN' && userPos < 2) {
+        return res.status(403).json({ message: '일정 등록 권한이 없습니다 (대리 이상 가능).' });
+    }
+
     if (!title || !date) return res.status(400).json({ message: '제목과 날짜를 입력해주세요.' });
 
     try {
@@ -24,17 +31,22 @@ exports.createEvent = async (req, res) => {
 
 exports.deleteEvent = async (req, res) => {
     const id = parseInt(req.params.id);
+    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
     
-    // 과장(3) 이상 또는 ADMIN만 일정 삭제 가능
-    if (!isAdminRole && userPos < 3) {
-        return res.status(403).json({ message: '일정 삭제 권한이 없습니다 (과장 이상만 가능).' });
+    if (!isAdminRole && userPos < 2) {
+        return res.status(403).json({ message: '일정 삭제 권한이 없습니다 (대리 이상 가능).' });
     }
 
     try {
         const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
+
+        const event = rows[0];
+        if (event.author !== currentUser && !isAdminRole && userPos < 3) {
+            return res.status(403).json({ message: '일정 삭제 권한이 없습니다 (본인 등록 일정이거나 과장 이상만 가능).' });
+        }
 
         await pool.query('DELETE FROM events WHERE id = ?', [id]);
         res.json({ message: '일정이 삭제되었습니다.' });
@@ -46,12 +58,12 @@ exports.deleteEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
     const id = parseInt(req.params.id);
     const { title, date } = req.body;
+    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
 
-    // 과장(3) 이상 또는 ADMIN만 일정 수정 가능
-    if (!isAdminRole && userPos < 3) {
-        return res.status(403).json({ message: '일정 수정 권한이 없습니다 (과장 이상만 가능).' });
+    if (!isAdminRole && userPos < 2) {
+        return res.status(403).json({ message: '일정 수정 권한이 없습니다 (대리 이상 가능).' });
     }
 
     if (!title) return res.status(400).json({ message: '일정 제목을 입력해주세요.' });
@@ -59,6 +71,11 @@ exports.updateEvent = async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
+
+        const event = rows[0];
+        if (event.author !== currentUser && !isAdminRole && userPos < 3) {
+            return res.status(403).json({ message: '일정 수정 권한이 없습니다 (본인 등록 일정이거나 과장 이상만 가능).' });
+        }
 
         const updatedDate = date || rows[0].date;
         await pool.query('UPDATE events SET title = ?, date = ? WHERE id = ?', [title, updatedDate, id]);

@@ -20,6 +20,7 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
     useFocusEffect(
         useCallback(() => {
             fetchTodayAttendance();
+            fetchEmployees();
         }, [])
     );
 
@@ -38,7 +39,12 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
     const handleScroll = (event: any) => {
         const x = event.nativeEvent.contentOffset.x;
         const page = Math.round(x / width);
-        if (currentPage !== page) setCurrentPage(page);
+        if (currentPage !== page) {
+            setCurrentPage(page);
+            if (page === 0) {
+                fetchEmployees();
+            }
+        }
     };
 
     const isDesktop = width > 768;
@@ -52,7 +58,13 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                         
                         <View style={{ position: 'absolute', top: 40, right: 40, zIndex: 10 }}>
                             <Pressable 
-                                onPress={() => setIsDirectoryOpen(!isDirectoryOpen)}
+                                onPress={() => {
+                                    const nextOpen = !isDirectoryOpen;
+                                    setIsDirectoryOpen(nextOpen);
+                                    if (nextOpen) {
+                                        fetchEmployees();
+                                    }
+                                }}
                                 style={({ hovered }) => [
                                     { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
                                     hovered ? { backgroundColor: colors.background } : {}
@@ -115,15 +127,26 @@ export const AttendanceTab = ({ isLoading, attendanceData, fetchTodayAttendance,
                                         <Icon name="users" size={24} color={colors.text} style={{ marginRight: 12 }} />
                                         <Text style={[styles.heading2, { marginBottom: 0 }]}>Employee Directory</Text>
                                     </View>
-                                    <Pressable
-                                        onPress={() => setIsDirectoryOpen(false)}
-                                        style={({ hovered }) => [
-                                            { padding: 8, borderRadius: 8, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
-                                            hovered ? { backgroundColor: colors.borderSoft } : {}
-                                        ]}
-                                    >
-                                        <Icon name="x" size={18} color={colors.text} />
-                                    </Pressable>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <Pressable
+                                            onPress={onRefresh}
+                                            style={({ hovered }) => [
+                                                { padding: 8, borderRadius: 8, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
+                                                hovered ? { backgroundColor: colors.borderSoft } : {}
+                                            ]}
+                                        >
+                                            <Icon name="refresh-cw" size={18} color={colors.text} />
+                                        </Pressable>
+                                        <Pressable
+                                            onPress={() => setIsDirectoryOpen(false)}
+                                            style={({ hovered }) => [
+                                                { padding: 8, borderRadius: 8, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.borderSoft },
+                                                hovered ? { backgroundColor: colors.borderSoft } : {}
+                                            ]}
+                                        >
+                                            <Icon name="x" size={18} color={colors.text} />
+                                        </Pressable>
+                                    </View>
                                 </View>
                                 <View style={{ flexDirection: 'column', gap: 12 }}>
                                     {employees?.map((emp: any) => (

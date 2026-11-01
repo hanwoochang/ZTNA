@@ -1,5 +1,6 @@
 require('dotenv').config();
 const http = require('http');
+const https = require('https');
 const { randomUUID } = require('crypto');
 const jwt = require('jsonwebtoken');
 const pool = require('./config/db');
@@ -8,11 +9,16 @@ const TARGET_BASE = 'http://127.0.0.1:5000';
 const GATEWAY_BASE = 'http://127.0.0.1:4000';
 const POLICY_BASE = 'http://127.0.0.1:3000';
 
-const keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+// 로컬 루프백(127.0.0.1) 마이크로 벤치마크 전용 Keep-Alive 에이전트
+// nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server
+const keepAliveHttpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+const keepAliveHttpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
 
 function requestOnce(urlStr, options = {}) {
     return new Promise((resolve, reject) => {
         const url = new URL(urlStr);
+        const isHttps = url.protocol === 'https:';
+        const transport = isHttps ? https : http;
         const startNs = process.hrtime.bigint();
         const reqOpts = {
             hostname: url.hostname,
@@ -23,10 +29,11 @@ function requestOnce(urlStr, options = {}) {
                 'x-ztna-benchmark': 'true',
                 ...(options.headers || {})
             },
-            agent: keepAliveAgent
+            agent: isHttps ? keepAliveHttpsAgent : keepAliveHttpAgent
         };
 
-        const req = http.request(reqOpts, (res) => {
+        // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server
+        const req = transport.request(reqOpts, (res) => {
             let bodyBytes = 0;
             res.on('data', (chunk) => { bodyBytes += chunk.length; });
             res.on('end', () => {
@@ -89,6 +96,7 @@ function fmt(num, digits = 2) {
 
 async function runConcurrentBatch(totalRequests, concurrency, fn) {
     const durations = [];
+    let errorCount = 0;
     let nextIndex = 0;
     const startNs = process.hrtime.bigint();
 
@@ -97,6 +105,9 @@ async function runConcurrentBatch(totalRequests, concurrency, fn) {
             const idx = nextIndex++;
             if (idx >= totalRequests) break;
             const res = await fn(idx);
+            if (res.statusCode >= 400) {
+                errorCount++;
+            }
             durations.push(res.durationMs);
         }
     }
@@ -106,7 +117,24 @@ async function runConcurrentBatch(totalRequests, concurrency, fn) {
 
     const totalSec = Number(process.hrtime.bigint() - startNs) / 1e9;
     const rps = totalRequests / totalSec;
-    return { stats: calcStats(durations), rps, totalSec };
+    return { stats: calcStats(durations), rps, totalSec, errorCount };
+}
+
+function issueToken(actor, expiresIn) {
+    return jwt.sign(
+        {
+            userId: actor.userId,
+            email: actor.email,
+            role: actor.role,
+            department: actor.department,
+            position_level: actor.position_level,
+            jti: randomUUID(),
+            deviceId: actor.deviceId,
+            allowDownload: actor.device_type !== 'BYOD'
+        },
+        process.env.JWT_SECRET,
+        { expiresIn }
+    );
 }
 
 async function prepareTestActor() {
@@ -123,35 +151,8 @@ async function prepareTestActor() {
     }
 
     const actor = rows[0];
-    const tokenFresh = jwt.sign(
-        {
-            userId: actor.userId,
-            email: actor.email,
-            role: actor.role,
-            department: actor.department,
-            position_level: actor.position_level,
-            jti: randomUUID(),
-            deviceId: actor.deviceId,
-            allowDownload: actor.device_type !== 'BYOD'
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '15m' }
-    );
-
-    const tokenExpiringSoon = jwt.sign(
-        {
-            userId: actor.userId,
-            email: actor.email,
-            role: actor.role,
-            department: actor.department,
-            position_level: actor.position_level,
-            jti: randomUUID(),
-            deviceId: actor.deviceId,
-            allowDownload: actor.device_type !== 'BYOD'
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '3m' }
-    );
+    const tokenFresh = issueToken(actor, '15m');
+    const tokenExpiringSoon = issueToken(actor, '3m');
 
     return { actor, tokenFresh, tokenExpiringSoon };
 }
@@ -161,7 +162,7 @@ async function main() {
     console.log('                 ZTNA 아키텍처 보안 오버헤드 종합 벤치마크 (1~4)                 ');
     console.log('================================================================================');
 
-    const { actor, tokenFresh, tokenExpiringSoon } = await prepareTestActor();
+    const { actor, tokenFresh } = await prepareTestActor();
     console.log(`[테스트 컨텍스트] 계정: ${actor.email} (Role: ${actor.role}, Lv: ${actor.position_level}) | 기기: ${actor.deviceId}`);
     console.log('[안내] x-ztna-benchmark 헤더가 적용되어 DB 감사 로그(intranet_access_logs)를 오염시키지 않습니다.\n');
 
@@ -182,14 +183,17 @@ async function main() {
     const gatewayTimingsList = [];
     const directNoticesTimes = [];
     const gatewayNoticesTimes = [];
+    let exp1Errors = 0;
 
     for (let i = 0; i < ITERATIONS; i++) {
         const dRoot = await requestOnce(`${TARGET_BASE}/`);
+        if (dRoot.statusCode >= 400) exp1Errors++;
         directRootTimes.push(dRoot.durationMs);
 
         const gRoot = await requestOnce(`${GATEWAY_BASE}/private/`, {
             headers: { Authorization: `Bearer ${tokenFresh}` }
         });
+        if (gRoot.statusCode >= 400) exp1Errors++;
         gatewayRootTimes.push(gRoot.durationMs);
         if (gRoot.serverTiming && Object.keys(gRoot.serverTiming).length > 0) {
             gatewayTimingsList.push(gRoot.serverTiming);
@@ -204,12 +208,18 @@ async function main() {
                 'x-user-position-level': String(actor.position_level || 1)
             }
         });
+        if (dNotice.statusCode >= 400) exp1Errors++;
         directNoticesTimes.push(dNotice.durationMs);
 
         const gNotice = await requestOnce(`${GATEWAY_BASE}/private/api/notices`, {
             headers: { Authorization: `Bearer ${tokenFresh}` }
         });
+        if (gNotice.statusCode >= 400) exp1Errors++;
         gatewayNoticesTimes.push(gNotice.durationMs);
+    }
+
+    if (exp1Errors > 0) {
+        console.warn(`[경고] 1번 실험 중 비정상 응답(4xx/5xx)이 ${exp1Errors}건 발생했습니다.`);
     }
 
     const sDirectRoot = calcStats(directRootTimes);
@@ -279,7 +289,8 @@ async function main() {
             '처리량 (Req/sec)': fmt(directRes.rps, 1),
             'Avg (ms)': fmt(directRes.stats.avg),
             'p95 (ms)': fmt(directRes.stats.p95),
-            'p99 (ms)': fmt(directRes.stats.p99)
+            'p99 (ms)': fmt(directRes.stats.p99),
+            '에러 수': directRes.errorCount
         });
         loadRows.push({
             '동시 접속(c)': `c = ${c}`,
@@ -287,7 +298,8 @@ async function main() {
             '처리량 (Req/sec)': fmt(ztnaRes.rps, 1),
             'Avg (ms)': fmt(ztnaRes.stats.avg),
             'p95 (ms)': fmt(ztnaRes.stats.p95),
-            'p99 (ms)': fmt(ztnaRes.stats.p99)
+            'p99 (ms)': fmt(ztnaRes.stats.p99),
+            '에러 수': ztnaRes.errorCount
         });
     }
     console.table(loadRows);
@@ -408,8 +420,11 @@ async function main() {
 
     const hbSkipReissueTimes = [];
     const hbForceReissueTimes = [];
-    let hbPayloadBytes = 0;
+    let skipPayloadBytes = 0;
+    let reissuePayloadBytes = 0;
+    let hbErrors = 0;
     const reqBody = JSON.stringify({ deviceId: actor.deviceId });
+    const reqBodyByteLen = Buffer.byteLength(reqBody);
 
     for (let i = 0; i < ITERATIONS; i++) {
         const resSkip = await requestOnce(`${POLICY_BASE}/api/verify-context`, {
@@ -417,23 +432,32 @@ async function main() {
             headers: {
                 Authorization: `Bearer ${tokenFresh}`,
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(reqBody)
+                'Content-Length': reqBodyByteLen
             },
             body: reqBody
         });
+        if (resSkip.statusCode >= 400) hbErrors++;
         hbSkipReissueTimes.push(resSkip.durationMs);
-        hbPayloadBytes = resSkip.bodyBytes + Buffer.byteLength(reqBody);
+        skipPayloadBytes = resSkip.bodyBytes + reqBodyByteLen;
 
+        // 재발급 시 기존 토큰이 블랙리스트에 등록될 수 있으므로 매회 새로운 jti를 가진 만료 임박 토큰 생성
+        const freshExpiringToken = issueToken(actor, '3m');
         const resReissue = await requestOnce(`${POLICY_BASE}/api/verify-context`, {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${tokenExpiringSoon}`,
+                Authorization: `Bearer ${freshExpiringToken}`,
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(reqBody)
+                'Content-Length': reqBodyByteLen
             },
             body: reqBody
         });
+        if (resReissue.statusCode >= 400) hbErrors++;
         hbForceReissueTimes.push(resReissue.durationMs);
+        reissuePayloadBytes = resReissue.bodyBytes + reqBodyByteLen;
+    }
+
+    if (hbErrors > 0) {
+        console.warn(`[경고] 4번 실험 중 비정상 응답(4xx/5xx)이 ${hbErrors}건 발생했습니다.`);
     }
 
     const sHbSkip = calcStats(hbSkipReissueTimes);
@@ -445,21 +469,22 @@ async function main() {
             'Avg (ms)': fmt(sHbSkip.avg),
             'p50 (ms)': fmt(sHbSkip.p50),
             'p95 (ms)': fmt(sHbSkip.p95),
-            '1회 왕복 데이터량': `약 ${hbPayloadBytes} Bytes`,
-            '분당 대역폭 (1인당)': `약 ${ fmt((hbPayloadBytes * 1) / 1024, 2) } KB/min`
+            '1회 왕복 데이터량': `약 ${skipPayloadBytes} Bytes`,
+            '분당 대역폭 (1인당)': `약 ${fmt((skipPayloadBytes * 1) / 1024, 2)} KB/min`
         },
         {
             'Heartbeat 시나리오': '갱신 주기 (만료 5분 이하 임박 -> 신규 JWT 서명/발급)',
             'Avg (ms)': fmt(sHbReissue.avg),
             'p50 (ms)': fmt(sHbReissue.p50),
             'p95 (ms)': fmt(sHbReissue.p95),
-            '1회 왕복 데이터량': `약 ${hbPayloadBytes} Bytes`,
-            '분당 대역폭 (1인당)': `약 ${ fmt((hbPayloadBytes * 1) / 1024, 2) } KB/min`
+            '1회 왕복 데이터량': `약 ${reissuePayloadBytes} Bytes`,
+            '분당 대역폭 (1인당)': `약 ${fmt((reissuePayloadBytes * 1) / 1024, 2)} KB/min`
         }
     ]);
 
     await pool.end();
-    keepAliveAgent.destroy();
+    keepAliveHttpAgent.destroy();
+    keepAliveHttpsAgent.destroy();
     console.log('================================================================================');
     console.log('벤치마크 완료! 브라우저에서는 F12 -> Network -> API 클릭 -> Timing 탭에서');
     console.log('Server-Timing 그래프 막대로 실시간 ZTNA 구간별 소요 시간을 확인하실 수 있습니다.');
