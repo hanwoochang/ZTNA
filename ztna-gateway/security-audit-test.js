@@ -186,6 +186,7 @@ async function runAudit() {
         const res = await sendRequest(`${GATEWAY_BASE}/private/`, {
             headers: { Authorization: `Bearer ${replayToken}` }
         });
+        await pool.query('DELETE FROM token_blacklist WHERE jti = ?', [revokedJti]);
         const passed = res.statusCode === 401;
         addResult(
             4,
@@ -427,8 +428,11 @@ async function runAudit() {
         );
     }
 
-    // 정리: 테스트 중 쌓인 감사 로그/시도 횟수 초기화
-    await pool.query('UPDATE users SET otp_attempts = 0 WHERE id = ?', [auditUser.id]);
+    // 정리: 모의 해킹 테스트로 인해 생성된 DB 감사 로그, 임시 기기, 임시 사원 계정 전량 삭제 (운영 로그 오염 방지)
+    await pool.query('DELETE FROM intranet_access_logs WHERE user_id = ? OR user_email = ?', [auditUser.id, testEmail]);
+    await pool.query('DELETE FROM access_logs WHERE user_id = ?', [auditUser.id]);
+    await pool.query('DELETE FROM devices WHERE user_id = ?', [auditUser.id]);
+    await pool.query('DELETE FROM users WHERE id = ?', [auditUser.id]);
     await pool.end();
 
     console.table(results);
