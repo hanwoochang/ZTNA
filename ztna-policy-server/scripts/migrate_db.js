@@ -55,13 +55,14 @@ async function migrate() {
         }
 
         // 2. devices 테이블 컬럼 추가
-        const deviceCols = ['device_type', 'is_compliant', 'status'];
+        const deviceCols = ['device_type', 'is_compliant', 'status', 'bio_token_hash'];
         for (const col of deviceCols) {
             try {
                 let query = '';
                 if (col === 'device_type') query = "ALTER TABLE devices ADD COLUMN device_type ENUM('CORPORATE', 'BYOD') DEFAULT 'BYOD'";
                 if (col === 'is_compliant') query = "ALTER TABLE devices ADD COLUMN is_compliant TINYINT(1) DEFAULT 1";
                 if (col === 'status') query = "ALTER TABLE devices ADD COLUMN status ENUM('PENDING', 'APPROVED', 'BLOCKED') DEFAULT 'PENDING'";
+                if (col === 'bio_token_hash') query = "ALTER TABLE devices ADD COLUMN bio_token_hash VARCHAR(255) DEFAULT NULL";
                 await pool.query(query);
                 console.log(`✅ devices 테이블 컬럼 추가 완료: ${col}`);
             } catch (err) {

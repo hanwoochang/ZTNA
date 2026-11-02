@@ -67,7 +67,8 @@ export const useAuth = () => {
                 const authMethod = await Storage.getItemAsync('authMethod');
                 
                 if (authMethod === 'bio') {
-                    if (!loginResponse.data.isTrustedDevice) {
+                    const storedBioToken = await Storage.getItemAsync('bio_token');
+                    if (!loginResponse.data.isTrustedDevice || !storedBioToken) {
                         if (Platform.OS === 'web') setLoginError('아직 신뢰할 수 없는 기기입니다.\n최초 1회는 이메일 OTP로 인증해야 합니다.');
                         else Alert.alert('새로운 기기 감지', '아직 신뢰할 수 없는 기기입니다.\n최초 1회는 무조건 이메일 OTP로 인증해야 생체 인증 기기로 등록됩니다.');
                         setOtp('');
@@ -92,12 +93,15 @@ export const useAuth = () => {
                                 const bioVerifyResponse = await axios.post(`${POLICY_SERVER_URL}/api/verify-bio`, {
                                     email,
                                     deviceId,
+                                    bioToken: storedBioToken,
                                     latitude: location?.latitude || null,
                                     longitude: location?.longitude || null,
                                 });
                                 if (bioVerifyResponse.data.token) {
                                     await Storage.setItemAsync('jwt_token', bioVerifyResponse.data.token);
                                     await Storage.setItemAsync('allowDownload', String(bioVerifyResponse.data.allowDownload));
+                                    await Storage.setItemAsync('user_position_level', String(bioVerifyResponse.data.position_level || 1));
+                                    await Storage.setItemAsync('user_role', bioVerifyResponse.data.role || 'USER');
                                     testGatewayAccess(bioVerifyResponse.data.token);
                                     setIsLoading(false);
                                     return; // 성공시 종료
@@ -189,6 +193,10 @@ export const useAuth = () => {
                 latitude: location?.latitude || null,
                 longitude: location?.longitude || null
             });
+
+            if (verifyResponse.data.bioToken) {
+                await Storage.setItemAsync('bio_token', verifyResponse.data.bioToken);
+            }
 
             if (verifyResponse.data.requiresApproval) {
                 // 신규 기기 등록 완료 → 어드민 승인 대기

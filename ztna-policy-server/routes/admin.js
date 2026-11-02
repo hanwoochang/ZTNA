@@ -247,7 +247,7 @@ router.patch('/devices/:id/approve', async (req, res) => {
 // 6. 기기 차단/신뢰 해제 (→ BLOCKED)
 router.patch('/devices/:id/revoke', async (req, res) => {
     try {
-        const [result] = await pool.query("UPDATE devices SET status = 'BLOCKED', is_trusted = 0 WHERE id = ?", [req.params.id]);
+        const [result] = await pool.query("UPDATE devices SET status = 'BLOCKED', is_trusted = 0, bio_token_hash = NULL WHERE id = ?", [req.params.id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: '기기를 찾을 수 없습니다.' });
         res.json({ message: '기기가 차단(신뢰 해제)되었습니다.' });
     } catch (error) {

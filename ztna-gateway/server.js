@@ -46,15 +46,23 @@ const verifyToken = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const tJwtEnd = process.hrtime.bigint();
 
-        // 1. 블랙리스트 확인 (로그아웃된 토큰인지 체크)
-        const tBlacklistStart = process.hrtime.bigint();
-        const [blacklisted] = await pool.query(
-            'SELECT id FROM token_blacklist WHERE jti = ?', 
-            [decoded.jti]
+        // 단일 LEFT JOIN 쿼리 1회로 블랙리스트 + 기기 상태 + 사용자 권한/활성 여부 통합 조회
+        const tDbStart = process.hrtime.bigint();
+        const [rows] = await pool.query(
+            `SELECT u.id AS user_id, u.role, u.department, u.position_level, u.is_active,
+                    d.status AS device_status, d.device_type,
+                    tb.id AS blacklisted_id
+             FROM users u
+             LEFT JOIN devices d ON d.user_id = u.id AND d.device_identifier = ?
+             LEFT JOIN token_blacklist tb ON tb.jti = ?
+             WHERE u.id = ?`,
+            [decoded.deviceId || null, decoded.jti || null, decoded.userId]
         );
-        const tBlacklistEnd = process.hrtime.bigint();
+        const tDbEnd = process.hrtime.bigint();
+        const ctx = rows[0];
 
-        if (blacklisted.length > 0) {
+        // 1. 블랙리스트 확인 (로그아웃된 토큰인지 체크)
+        if (ctx && ctx.blacklisted_id) {
             if (!isBenchmark) console.log(`[차단] 폐기된 출입증으로 접근 시도! (${decoded.email})`);
             return res.status(401).json({ message: '접근 금지: 이미 폐기된 출입증입니다!' });
         }
@@ -68,14 +76,7 @@ const verifyToken = async (req, res, next) => {
         }
 
         // 3. 실시간 강제 차단(Revoke) 검사 및 권한 갱신 (Heartbeat / API Call)
-        const tDeviceStart = process.hrtime.bigint();
-        const [devices] = await pool.query(
-            'SELECT status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
-            [decoded.userId, decoded.deviceId]
-        );
-        const tDeviceEnd = process.hrtime.bigint();
-        
-        if (!devices[0] || devices[0].status !== 'APPROVED') {
+        if (!ctx || ctx.device_status !== 'APPROVED') {
             if (!isBenchmark) console.log(`[강제 튕김] 관리자에 의해 신뢰 해제된 기기 접근 차단! (${decoded.email})`);
             // 이미 발급된 JWT라도 강제로 효력을 상실시킴 (Session Tearing)
             return res.status(401).json({ 
@@ -85,34 +86,28 @@ const verifyToken = async (req, res, next) => {
         }
 
         // 실시간 소유 형태(BYOD/CORPORATE) 변경 감지 및 토큰 권한 오버라이드
-        if (devices[0].device_type === 'BYOD') {
+        if (ctx.device_type === 'BYOD') {
             decoded.allowDownload = false;
-        } else if (devices[0].device_type === 'CORPORATE') {
+        } else if (ctx.device_type === 'CORPORATE') {
             decoded.allowDownload = true;
         }
 
-        // 실시간 사용자 직급, 권한 및 계정 정지 여부 DB 동기화 (토큰 재발급 없이도 즉시 반영)
-        const tUserStart = process.hrtime.bigint();
-        const [freshUsers] = await pool.query('SELECT role, department, position_level, is_active FROM users WHERE id = ?', [decoded.userId]);
-        const tUserEnd = process.hrtime.bigint();
-
-        if (!freshUsers[0] || freshUsers[0].is_active === 0) {
+        // 4. 실시간 사용자 직급, 권한 및 계정 정지 여부 DB 동기화 (토큰 재발급 없이도 즉시 반영)
+        if (ctx.is_active === 0) {
             if (!isBenchmark) console.log(`[강제 튕김] 정지되었거나 삭제된 계정 접근 차단! (${decoded.email})`);
             return res.status(401).json({
                 message: '관리자에 의해 계정이 정지되었습니다. 세션이 차단됩니다.',
                 revoked: true
             });
         }
-        decoded.role = freshUsers[0].role;
-        decoded.department = freshUsers[0].department;
-        decoded.position_level = freshUsers[0].position_level;
+        decoded.role = ctx.role;
+        decoded.department = ctx.department;
+        decoded.position_level = ctx.position_level;
 
         const tPepEnd = process.hrtime.bigint();
         req.ztnaTimings = {
             jwtMs: Number(tJwtEnd - tJwtStart) / 1e6,
-            dbBlacklistMs: Number(tBlacklistEnd - tBlacklistStart) / 1e6,
-            dbDeviceMs: Number(tDeviceEnd - tDeviceStart) / 1e6,
-            dbUserMs: Number(tUserEnd - tUserStart) / 1e6,
+            dbVerifyMs: Number(tDbEnd - tDbStart) / 1e6,
             ztnaPepMs: Number(tPepEnd - tStart) / 1e6,
             proxyStartNs: tPepEnd
         };
@@ -148,9 +143,7 @@ app.use('/private', verifyToken, createProxyMiddleware({
                 const upstreamMs = Number(process.hrtime.bigint() - t.proxyStartNs) / 1e6;
                 proxyRes.headers['server-timing'] = [
                     `jwt;dur=${t.jwtMs.toFixed(3)};desc="JWT Verify"`,
-                    `db-blacklist;dur=${t.dbBlacklistMs.toFixed(3)};desc="DB Blacklist Check"`,
-                    `db-device;dur=${t.dbDeviceMs.toFixed(3)};desc="DB Device Trust"`,
-                    `db-user;dur=${t.dbUserMs.toFixed(3)};desc="DB User Sync"`,
+                    `db-verify;dur=${t.dbVerifyMs.toFixed(3)};desc="DB Single-JOIN Verify"`,
                     `ztna-pep;dur=${t.ztnaPepMs.toFixed(3)};desc="ZTNA PEP Total"`,
                     `target-upstream;dur=${upstreamMs.toFixed(3)};desc="Target Server"`
                 ].join(', ');

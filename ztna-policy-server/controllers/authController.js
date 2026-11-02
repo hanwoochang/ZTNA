@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { randomUUID } = require('crypto');
+const { randomUUID, randomBytes } = require('crypto');
 const pool = require('../config/db');
 const transporter = require('../utils/mailer');
 const { loginLimiter, otpLimiter } = require('../middleware/rateLimiter');
@@ -78,12 +78,12 @@ exports.login = async (req, res) => {
         reasons = reasons.concat(riskEvaluation.reasons);
         forceDeny = forceDeny || riskEvaluation.forceDeny;
 
-        // 정책 판별 수행: 차단 (DENY) - 고위험(70점 이상) 감지 시 해당 기기 상태를 BLOCKED로 즉시 전환
+        // 정책 판별 수행: 차단 (DENY) - 고위험(70점 이상) 감지 시 해당 기기 상태를 BLOCKED로 즉시 전환 및 생체인증 비밀키 폐기
         if (forceDeny || riskScore >= 70) {
             action = 'DENY';
             if (currentDevice && currentDevice.status !== 'BLOCKED') {
                 await pool.query(
-                    "UPDATE devices SET status = 'BLOCKED', is_trusted = 0 WHERE id = ?",
+                    "UPDATE devices SET status = 'BLOCKED', is_trusted = 0, bio_token_hash = NULL WHERE id = ?",
                     [currentDevice.id]
                 );
             }
@@ -115,7 +115,7 @@ exports.login = async (req, res) => {
             await pool.query('INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [user.id, currentDevice?.id || null, ipAddress, riskScore, action, reasons.join(', '), loginHour]);
             
-            const isTrustedDevice = !!(currentDevice && currentDevice.status === 'APPROVED');
+            const isTrustedDevice = !!(currentDevice && currentDevice.status === 'APPROVED' && currentDevice.bio_token_hash);
             return res.status(202).json({ message: 'OTP 인증이 필요합니다.', requiresOtp: true, isTrustedDevice, 위험도점수: riskScore });
 
         } else {
@@ -182,27 +182,37 @@ exports.verifyOtp = async (req, res) => {
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
         const [existing] = await pool.query('SELECT id, status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?', [user.id, deviceId]);
 
+        // 이메일 OTP 통과 시 기기 전용 생체 인증 비밀키(bioToken) 64자리 난수 발급 및 해시 저장
+        const bioToken = randomBytes(32).toString('hex');
+        const bioTokenHash = await bcrypt.hash(bioToken, 10);
+
         if (existing.length === 0) {
-            // 신규 기기 → PENDING으로 등록 (어드민 승인 대기)
+            // 신규 기기 → PENDING으로 등록 (어드민 승인 대기) + bio_token_hash 사전 등록
             await pool.query(
-                "INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, status, last_latitude, last_longitude) VALUES (?, ?, ?, 0, 'PENDING', ?, ?)",
-                [user.id, deviceId, ipAddress, latitude || null, longitude || null]
+                "INSERT INTO devices (user_id, device_identifier, last_ip_address, is_trusted, status, last_latitude, last_longitude, bio_token_hash) VALUES (?, ?, ?, 0, 'PENDING', ?, ?, ?)",
+                [user.id, deviceId, ipAddress, latitude || null, longitude || null, bioTokenHash]
             );
             return res.status(202).json({
                 message: '기기 등록이 완료되었습니다. 관리자의 승인 후 로그인이 가능합니다.',
-                requiresApproval: true
+                requiresApproval: true,
+                bioToken
             });
         } else if (existing[0].status === 'PENDING') {
+            await pool.query(
+                'UPDATE devices SET bio_token_hash = ? WHERE user_id = ? AND device_identifier = ?',
+                [bioTokenHash, user.id, deviceId]
+            );
             return res.status(202).json({
                 message: '관리자의 승인을 기다리는 중입니다.',
-                requiresApproval: true
+                requiresApproval: true,
+                bioToken
             });
         } else if (existing[0].status !== 'APPROVED') {
             return res.status(403).json({ message: '관리자에 의해 차단(신뢰 해제)된 기기입니다.' });
         } else {
             await pool.query(
-                'UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ? WHERE user_id = ? AND device_identifier = ?',
-                [ipAddress, latitude || null, longitude || null, user.id, deviceId]
+                'UPDATE devices SET last_ip_address = ?, last_accessed_at = NOW(), last_latitude = ?, last_longitude = ?, bio_token_hash = ? WHERE user_id = ? AND device_identifier = ?',
+                [ipAddress, latitude || null, longitude || null, bioTokenHash, user.id, deviceId]
             );
         }
 
@@ -227,16 +237,16 @@ exports.verifyOtp = async (req, res) => {
             allowDownload 
         }, process.env.JWT_SECRET, { expiresIn: '15m' });
         
-        res.json({ message: '2차 인증 성공!', token, allowDownload, position_level: user.position_level, role: user.role });
+        res.json({ message: '2차 인증 성공!', token, bioToken, allowDownload, position_level: user.position_level, role: user.role });
     } catch (error) {
         console.error('[OTP 검증 에러 상세]:', error);
         res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
     }
 };
 
-// [4] 생체 인증(FaceID/지문) 검증
+// [4] 생체 인증(FaceID/지문) 검증 — 기기 전용 비밀키(bioToken) 필수 검증 포함
 exports.verifyBio = async (req, res) => {
-    const { email, deviceId, latitude, longitude } = req.body;
+    const { email, deviceId, bioToken, latitude, longitude } = req.body;
 
     if (!email || !deviceId) return res.status(400).json({ message: '이메일, 기기 정보는 필수입니다.' });
 
@@ -259,7 +269,7 @@ exports.verifyBio = async (req, res) => {
         }
 
         const [devices] = await pool.query(
-            'SELECT id, status, device_type FROM devices WHERE user_id = ? AND device_identifier = ?',
+            'SELECT id, status, device_type, bio_token_hash FROM devices WHERE user_id = ? AND device_identifier = ?',
             [user.id, deviceId]
         );
         if (!devices[0] || devices[0].status !== 'APPROVED') {
@@ -268,6 +278,16 @@ exports.verifyBio = async (req, res) => {
                 [user.id, devices[0]?.id || null, ipAddress, 'DENY', '미승인 기기에서의 생체 인증 시도 차단', loginHour]
             );
             return res.status(403).json({ message: '미등록 또는 신뢰할 수 없는 기기입니다. 생체 인증은 등록된 기기에서만 가능합니다.' });
+        }
+
+        // 기기 전용 생체 인증 비밀키(bioToken) 검증 (API 직접 호출을 통한 OTP 우회 원천 차단)
+        if (!bioToken || !devices[0].bio_token_hash || !(await bcrypt.compare(String(bioToken), devices[0].bio_token_hash))) {
+            await pool.query('UPDATE users SET otp_attempts = otp_attempts + 1 WHERE id = ?', [user.id]);
+            await pool.query(
+                'INSERT INTO access_logs (user_id, device_id, ip_address, risk_score, action_taken, reason, login_hour) VALUES (?, ?, ?, 70, ?, ?, ?)',
+                [user.id, devices[0].id, ipAddress, 'DENY', '생체 인증 기기 전용 비밀키(bioToken) 불일치 또는 누락 차단', loginHour]
+            );
+            return res.status(401).json({ message: '생체 인증 기기 비밀키(bioToken)가 유효하지 않습니다. 최초 1회 이메일 OTP 인증이 필요합니다.' });
         }
 
         await pool.query('UPDATE users SET otp_code = NULL, otp_expiry = NULL, otp_attempts = 0 WHERE id = ?', [user.id]);
@@ -384,14 +404,6 @@ exports.verifyContext = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const tJwtEnd = process.hrtime.bigint();
 
-        // 이미 블랙리스트에 등재된 토큰인지 확인
-        const tBlacklistStart = process.hrtime.bigint();
-        const [blacklisted] = await pool.query('SELECT id FROM token_blacklist WHERE jti = ?', [decoded.jti]);
-        const tBlacklistEnd = process.hrtime.bigint();
-        if (blacklisted.length > 0) {
-            return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
-        }
-
         // 토큰에 박힌 기기와 요청 기기가 다르면 토큰 탈취/재사용으로 간주
         if (decoded.deviceId && decoded.deviceId !== deviceId) {
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
@@ -399,28 +411,40 @@ exports.verifyContext = async (req, res) => {
             return res.status(403).json({ action: 'TERMINATE', message: '기기 정보 불일치! 연결이 강제 종료됩니다.' });
         }
 
-        const tDeviceStart = process.hrtime.bigint();
-        const [devices] = await pool.query(
-            'SELECT status, device_type, last_ip_address FROM devices WHERE user_id = ? AND device_identifier = ?',
-            [decoded.userId, deviceId]
+        // 단일 LEFT JOIN 쿼리 1회로 블랙리스트 + 기기 상태 + 사용자 권한/활성 여부 통합 조회
+        const tDbStart = process.hrtime.bigint();
+        const [rows] = await pool.query(
+            `SELECT u.id AS user_id, u.role, u.department, u.position_level, u.is_active,
+                    d.status AS device_status, d.device_type, d.last_ip_address,
+                    tb.id AS blacklisted_id
+             FROM users u
+             LEFT JOIN devices d ON d.user_id = u.id AND d.device_identifier = ?
+             LEFT JOIN token_blacklist tb ON tb.jti = ?
+             WHERE u.id = ?`,
+            [deviceId, decoded.jti, decoded.userId]
         );
-        const tDeviceEnd = process.hrtime.bigint();
-        const device = devices[0];
+        const tDbEnd = process.hrtime.bigint();
+        const ctx = rows[0];
 
-        // [강제 추방] 기기 미등록 또는 관리자에 의해 차단/승인 해제된 경우만 TERMINATE
+        // 1. 이미 블랙리스트에 등재된 토큰인지 확인
+        if (ctx && ctx.blacklisted_id) {
+            return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
+        }
+
+        // 2. [강제 추방] 기기 미등록 또는 관리자에 의해 차단/승인 해제된 경우만 TERMINATE
         // IP 변경은 Wi-Fi ↔ LTE 전환, NAT 변경 등 정상 상황이므로 추방 조건에서 제외
-        if (!device || device.status !== 'APPROVED') {
-            console.log(`[강제 추방] ${decoded.email} - 기기 미승인 또는 차단 (status: ${device?.status ?? '미등록'})`);
+        if (!ctx || ctx.device_status !== 'APPROVED') {
+            console.log(`[강제 추방] ${decoded.email} - 기기 미승인 또는 차단 (status: ${ctx?.device_status ?? '미등록'})`);
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
             return res.status(403).json({ action: 'TERMINATE', message: '관리자에 의해 기기 접근이 차단되었습니다. 세션이 종료됩니다.' });
         }
 
-        // [IP 변경 감지] 추방 없이 DB 갱신 후 클라이언트에 IP_CHANGED 상태 전달
+        // 3. [IP 변경 감지] 추방 없이 DB 갱신 후 클라이언트에 IP_CHANGED 상태 전달
         let ipChanged = false;
         const isBenchmark = req.headers['x-ztna-benchmark'] === 'true';
-        if (!isBenchmark && device.last_ip_address && device.last_ip_address !== currentIp) {
-            console.log(`[IP 변경 감지] ${decoded.email} - ${device.last_ip_address} → ${currentIp} (세션 유지)`);
+        if (!isBenchmark && ctx.last_ip_address && ctx.last_ip_address !== currentIp) {
+            console.log(`[IP 변경 감지] ${decoded.email} - ${ctx.last_ip_address} → ${currentIp} (세션 유지)`);
             await pool.query(
                 'UPDATE devices SET last_ip_address = ? WHERE user_id = ? AND device_identifier = ?',
                 [currentIp, decoded.userId, deviceId]
@@ -428,21 +452,18 @@ exports.verifyContext = async (req, res) => {
             ipChanged = true;
         }
 
-        const tUserStart = process.hrtime.bigint();
-        const [users] = await pool.query('SELECT role, department, position_level, is_active FROM users WHERE id = ?', [decoded.userId]);
-        const tUserEnd = process.hrtime.bigint();
-        if (!users[0] || users[0].is_active === 0) {
+        // 4. 계정 정지 여부 확인
+        if (ctx.is_active === 0) {
             await pool.query('INSERT IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)',
                 [decoded.jti, new Date(decoded.exp * 1000)]);
             return res.status(403).json({ action: 'TERMINATE', message: '관리자에 의해 계정이 정지되었습니다. 세션이 종료됩니다.' });
         }
-        const user = users[0];
 
         // 최신 기기 소유 형태 기준으로 다운로드 권한 재산정
-        const allowDownload = device.device_type !== 'BYOD';
-        const nextRole = user.role || decoded.role;
-        const nextDepartment = user.department || decoded.department;
-        const nextPositionLevel = user.position_level !== undefined ? user.position_level : decoded.position_level;
+        const allowDownload = ctx.device_type !== 'BYOD';
+        const nextRole = ctx.role || decoded.role;
+        const nextDepartment = ctx.department || decoded.department;
+        const nextPositionLevel = ctx.position_level !== undefined ? ctx.position_level : decoded.position_level;
 
         // 만료까지 남은 시간이 5분 이하이거나 권한/소유형태가 변경된 경우에만 새 토큰 발급 (불필요한 30초마다 중복 발급 방지)
         const remainingMs = (decoded.exp * 1000) - Date.now();
@@ -473,9 +494,7 @@ exports.verifyContext = async (req, res) => {
         const tEnd = process.hrtime.bigint();
         res.setHeader('Server-Timing', [
             `jwt;dur=${(Number(tJwtEnd - tJwtStart) / 1e6).toFixed(3)};desc="JWT Verify"`,
-            `db-blacklist;dur=${(Number(tBlacklistEnd - tBlacklistStart) / 1e6).toFixed(3)};desc="DB Blacklist Check"`,
-            `db-device;dur=${(Number(tDeviceEnd - tDeviceStart) / 1e6).toFixed(3)};desc="DB Device Trust"`,
-            `db-user;dur=${(Number(tUserEnd - tUserStart) / 1e6).toFixed(3)};desc="DB User Sync"`,
+            `db-verify;dur=${(Number(tDbEnd - tDbStart) / 1e6).toFixed(3)};desc="DB Single-JOIN Verify"`,
             `ztna-pdp;dur=${(Number(tEnd - tStart) / 1e6).toFixed(3)};desc="ZTNA PDP Heartbeat Total"`
         ].join(', '));
 

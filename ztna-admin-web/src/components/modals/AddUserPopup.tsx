@@ -10,7 +10,7 @@ export function AddUserPopup() {
     try {
       await api.post('/admin/users', { ...formData, position_level: POSITIONS[formData.position] });
       if (window.opener) {
-        window.opener.postMessage('RELOAD_USERS', '*');
+        window.opener.postMessage('RELOAD_USERS', window.location.origin);
       }
       window.close();
     } catch (err: any) {

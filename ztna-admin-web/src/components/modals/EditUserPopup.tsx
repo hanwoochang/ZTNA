@@ -21,7 +21,7 @@ export function EditUserPopup() {
     try {
       await api.put(`/admin/users/${id}`, { ...formData, position_level: POSITIONS[formData.position] });
       if (window.opener) {
-        window.opener.postMessage('RELOAD_USERS', '*');
+        window.opener.postMessage('RELOAD_USERS', window.location.origin);
       }
       window.close();
     } catch (err: any) {

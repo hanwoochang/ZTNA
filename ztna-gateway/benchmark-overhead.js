@@ -317,6 +317,7 @@ async function main() {
     };
 
     const tJwt = avgTiming('jwt');
+    const tDbVerify = avgTiming('db-verify');
     const tBlacklist = avgTiming('db-blacklist');
     const tDevice = avgTiming('db-device');
     const tUser = avgTiming('db-user');
@@ -324,44 +325,73 @@ async function main() {
     const tUpstream = avgTiming('target-upstream');
     const totalMeasured = tPep.avg + tUpstream.avg;
 
-    console.table([
-        {
-            '세부 단계 (Server-Timing)': '1. JWT 서명 검증 (jwt)',
-            'Avg (ms)': fmt(tJwt.avg, 3),
-            'p95 (ms)': fmt(tJwt.p95, 3),
-            'PEP 내 비중 (%)': `${fmt((tJwt.avg / (tPep.avg || 1)) * 100, 1)}%`
-        },
-        {
-            '세부 단계 (Server-Timing)': '2. DB 블랙리스트 조회 (db-blacklist)',
-            'Avg (ms)': fmt(tBlacklist.avg, 3),
-            'p95 (ms)': fmt(tBlacklist.p95, 3),
-            'PEP 내 비중 (%)': `${fmt((tBlacklist.avg / (tPep.avg || 1)) * 100, 1)}%`
-        },
-        {
-            '세부 단계 (Server-Timing)': '3. DB 기기 신뢰 상태 조회 (db-device)',
-            'Avg (ms)': fmt(tDevice.avg, 3),
-            'p95 (ms)': fmt(tDevice.p95, 3),
-            'PEP 내 비중 (%)': `${fmt((tDevice.avg / (tPep.avg || 1)) * 100, 1)}%`
-        },
-        {
-            '세부 단계 (Server-Timing)': '4. DB 계정/권한 동기화 (db-user)',
-            'Avg (ms)': fmt(tUser.avg, 3),
-            'p95 (ms)': fmt(tUser.p95, 3),
-            'PEP 내 비중 (%)': `${fmt((tUser.avg / (tPep.avg || 1)) * 100, 1)}%`
-        },
-        {
-            '세부 단계 (Server-Timing)': '[합계] ZTNA PEP 보안 검증 총합 (ztna-pep)',
-            'Avg (ms)': fmt(tPep.avg, 3),
-            'p95 (ms)': fmt(tPep.p95, 3),
-            'PEP 내 비중 (%)': '100.0%'
-        },
-        {
-            '세부 단계 (Server-Timing)': '5. 타겟 서버 프록시 왕복 (target-upstream)',
-            'Avg (ms)': fmt(tUpstream.avg, 3),
-            'p95 (ms)': fmt(tUpstream.p95, 3),
-            'PEP 내 비중 (%)': `(전체 대비 ${fmt((tUpstream.avg / (totalMeasured || 1)) * 100, 1)}%)`
-        }
-    ]);
+    if (tDbVerify.avg > 0) {
+        console.table([
+            {
+                '세부 단계 (Server-Timing)': '1. JWT 서명 검증 (jwt)',
+                'Avg (ms)': fmt(tJwt.avg, 3),
+                'p95 (ms)': fmt(tJwt.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tJwt.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '2. DB 통합 검증 1회 (db-verify: LEFT JOIN)',
+                'Avg (ms)': fmt(tDbVerify.avg, 3),
+                'p95 (ms)': fmt(tDbVerify.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tDbVerify.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '[합계] ZTNA PEP 보안 검증 총합 (ztna-pep)',
+                'Avg (ms)': fmt(tPep.avg, 3),
+                'p95 (ms)': fmt(tPep.p95, 3),
+                'PEP 내 비중 (%)': '100.0%'
+            },
+            {
+                '세부 단계 (Server-Timing)': '3. 타겟 서버 프록시 왕복 (target-upstream)',
+                'Avg (ms)': fmt(tUpstream.avg, 3),
+                'p95 (ms)': fmt(tUpstream.p95, 3),
+                'PEP 내 비중 (%)': `(전체 대비 ${fmt((tUpstream.avg / (totalMeasured || 1)) * 100, 1)}%)`
+            }
+        ]);
+    } else {
+        console.table([
+            {
+                '세부 단계 (Server-Timing)': '1. JWT 서명 검증 (jwt)',
+                'Avg (ms)': fmt(tJwt.avg, 3),
+                'p95 (ms)': fmt(tJwt.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tJwt.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '2. DB 블랙리스트 조회 (db-blacklist)',
+                'Avg (ms)': fmt(tBlacklist.avg, 3),
+                'p95 (ms)': fmt(tBlacklist.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tBlacklist.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '3. DB 기기 신뢰 상태 조회 (db-device)',
+                'Avg (ms)': fmt(tDevice.avg, 3),
+                'p95 (ms)': fmt(tDevice.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tDevice.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '4. DB 계정/권한 동기화 (db-user)',
+                'Avg (ms)': fmt(tUser.avg, 3),
+                'p95 (ms)': fmt(tUser.p95, 3),
+                'PEP 내 비중 (%)': `${fmt((tUser.avg / (tPep.avg || 1)) * 100, 1)}%`
+            },
+            {
+                '세부 단계 (Server-Timing)': '[합계] ZTNA PEP 보안 검증 총합 (ztna-pep)',
+                'Avg (ms)': fmt(tPep.avg, 3),
+                'p95 (ms)': fmt(tPep.p95, 3),
+                'PEP 내 비중 (%)': '100.0%'
+            },
+            {
+                '세부 단계 (Server-Timing)': '5. 타겟 서버 프록시 왕복 (target-upstream)',
+                'Avg (ms)': fmt(tUpstream.avg, 3),
+                'p95 (ms)': fmt(tUpstream.p95, 3),
+                'PEP 내 비중 (%)': `(전체 대비 ${fmt((tUpstream.avg / (totalMeasured || 1)) * 100, 1)}%)`
+            }
+        ]);
+    }
 
     // 추가 실험: DB 순차 쿼리 3회 vs 단일 JOIN 쿼리 1회 비교
     const decodedSample = jwt.verify(tokenFresh, process.env.JWT_SECRET);
