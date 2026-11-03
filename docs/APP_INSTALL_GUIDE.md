@@ -12,7 +12,7 @@
 스마트폰의 모바일 브라우저(Chrome, 삼성 인터넷 등)에서 아래 링크 중 하나를 선택하여 다운로드합니다:
 
 *   **Expo 공식 최신 빌드 페이지 (PC 화면에서 QR 스캔 및 최신 APK 다운로드 가능):**  
-    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/3e355a5a-8100-4bb5-ad07-bf7320a77df9](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/3e355a5a-8100-4bb5-ad07-bf7320a77df9)
+    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/4e456877-6e20-4b30-827a-aff2c780a58d](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/4e456877-6e20-4b30-827a-aff2c780a58d)
 *   **이전 안정화 APK 직접 다운로드 URL:**  
     [https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk](https://expo.dev/artifacts/eas/qRerr84_BYfY9gku85sc0qhWVUbn9KjzM7vITBAssuM.apk)
 
@@ -63,24 +63,27 @@
 
 ---
 
-## 3. 관리자 웹 (Admin Web Dashboard) 접속 방법
+## 3. 관리자 웹 (Admin Web) 및 클라이언트 웹 (Client Web) 접속 방법
 
-관리자 웹은 AWS EC2 Nginx 웹 서버에 배포되어 있으며, PC나 모바일 기기의 웹 브라우저에서 즉시 접속할 수 있습니다.
+관리자 웹과 클라이언트 웹은 AWS EC2 Nginx 리버스 프록시 및 Let's Encrypt SSL/TLS 인증서(HTTPS)가 적용된 도메인으로 배포되어 있으며, PC나 모바일 기기의 웹 브라우저에서 즉시 접속할 수 있습니다.
 
-*   **접속 URL:** `http://54.79.43.69`
-*   **포트:** 80 (HTTP 기본 포트이므로 포트 번호 입력 생략 가능)
+*   **관리자 웹 (Admin Web Dashboard) 접속 URL:** `https://ztna-core.duckdns.org`
+*   **클라이언트 웹 (Client Web Portal) 접속 URL:** `https://ztna-core.duckdns.org/app/`
+*   **포트:** 443 (HTTPS 기본 포트이므로 포트 번호 입력 생략 가능, HTTP 80 접속 시 자동으로 HTTPS로 리다이렉트됨)
 *   **지원 브라우저:** Chrome, Edge, Safari, Firefox 등 모든 최신 브라우저
+*   **모바일 보안 정책 안내:** 모바일 앱으로 사내 기밀망(`IntranetScreen`) 진입 시 `expo-screen-capture`에 의해 화면 캡처 및 녹화가 자동으로 차단되며, `expo-device` 기반 루팅/탈옥(`isRootedExperimentalAsync`) 감지 시 위험도 점수가 가산되어 접근이 통제됩니다.
 
 ---
 
 ## 4. 테스트 로그인 계정 안내
 
-모바일 앱 및 관리자 웹에서 바로 테스트할 수 있는 기본 계정 정보입니다.
+모바일 앱, 클라이언트 웹 및 관리자 웹에서 바로 테스트할 수 있는 기본 시드 계정(`migrate_db.js` 기준) 정보입니다.
 
-| 구분 | 이메일 | 비밀번호 | 권한 (Role) | 직급 (Position) | 접근 허용 범위 |
+| 구분 | 이메일 | 비밀번호 | 권한 (Role) | 직급 (Position) | 단말/보안 특성 및 접근 허용 범위 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **최고 관리자** | `admin@company.com` | `1234` | ADMIN | 임원 (Level 6) | 관리자 웹 대시보드, 전체 기밀문서, 전 사원 제어 |
-| **일반 직원 (과장)** | `user1@company.com` | `1234` | USER | 과장 (Level 3) | 모바일 사내망, 공지사항 작성/삭제, 기밀문서 업로드 |
-| **일반 직원 (사원)** | `user2@company.com` | `1234` | USER | 사원 (Level 1) | 모바일 사내망 기본 조회, 본인 근태 기록 |
+| **최고 관리자** | `admin@company.com` | `1234` | ADMIN | 임원 (Level 6) | 관리자 웹 대시보드, 전체 기밀문서 열람/업로드/삭제, 전 사원 및 단말 제어 |
+| **재무팀 정직원 (법인폰)** | `finance_corp@company.com` | `1234` | USER | 과장 (Level 3) | 법인 기기(`CORPORATE`) 승인, 사내 일정(Schedule) 조회/등록, 공지사항 작성/삭제, 기밀문서 업로드 및 다운로드 허용 |
+| **재무팀 신입 (개인다운로드 통제)** | `finance_byod@company.com` | `1234` | USER | 사원 (Level 1) | 개인 기기(`BYOD`) 승인, 사내망 기본 조회 및 출퇴근 기록 가능 (단, `BYOD` 정책에 따라 기밀문서 다운로드 차단 및 Schedule 탭 비노출) |
+| **재무팀 주의직원 (취약단말)** | `finance_vuln@company.com` | `1234` | USER | 대리 (Level 2) | 취약 OS/루팅 위험 시나리오 테스트용 계정 (대리 직급 이상이므로 정상 기기 접속 시 공지사항 및 일정 등록 가능, 기밀문서 업로드는 과장 이상만 가능) |
 
-> **참고:** 관리자 계정(`admin@company.com`)은 관리자 웹(`http://54.79.43.69`) 전용 로그인과 모바일 앱 로그인 모두 가능합니다.
+> **참고:** 관리자 계정(`admin@company.com`)은 관리자 웹(`https://ztna-core.duckdns.org`) 전용 로그인과 클라이언트 웹/모바일 앱(`https://ztna-core.duckdns.org/app/`) 로그인 모두 가능합니다. 사내망 내 공지사항 및 일정 등록/삭제는 **대리(Level 2) 이상**, 기밀문서 업로드 및 삭제는 **과장(Level 3) 이상** 또는 `ADMIN`에게 허용됩니다.

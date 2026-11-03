@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { View, Text, Animated, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image } from 'expo-image';
 import { useAppStyles } from '../styles/styles';
 import { useIntranet } from '../hooks/useIntranet';
 import { useTheme } from '../hooks/useTheme';
@@ -59,10 +58,10 @@ export const IntranetScreen = (props: Props) => {
         }, 5000);
 
         if (Platform.OS !== 'web') {
-            // ScreenCapture.preventScreenCaptureAsync(); // 캡처 허용을 위해 임시 주석 처리
+            ScreenCapture.preventScreenCaptureAsync();
             return () => {
                 clearInterval(syncInterval);
-                // ScreenCapture.allowScreenCaptureAsync();
+                ScreenCapture.allowScreenCaptureAsync();
             };
         }
 

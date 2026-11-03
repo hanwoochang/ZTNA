@@ -31,7 +31,8 @@ exports.createEvent = async (req, res) => {
 
 exports.deleteEvent = async (req, res) => {
     const id = parseInt(req.params.id);
-    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const userEmail = req.headers['x-user-email'] || '';
+    const currentUser = userEmail.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
     
@@ -44,7 +45,8 @@ exports.deleteEvent = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
 
         const event = rows[0];
-        if (event.author !== currentUser && !isAdminRole && userPos < 3) {
+        const isAuthor = event.author === currentUser || (userEmail && event.author === userEmail);
+        if (!isAuthor && !isAdminRole && userPos < 3) {
             return res.status(403).json({ message: '일정 삭제 권한이 없습니다 (본인 등록 일정이거나 과장 이상만 가능).' });
         }
 
@@ -58,7 +60,8 @@ exports.deleteEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
     const id = parseInt(req.params.id);
     const { title, date } = req.body;
-    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const userEmail = req.headers['x-user-email'] || '';
+    const currentUser = userEmail.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
 
@@ -73,7 +76,8 @@ exports.updateEvent = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '일정을 찾을 수 없습니다.' });
 
         const event = rows[0];
-        if (event.author !== currentUser && !isAdminRole && userPos < 3) {
+        const isAuthor = event.author === currentUser || (userEmail && event.author === userEmail);
+        if (!isAuthor && !isAdminRole && userPos < 3) {
             return res.status(403).json({ message: '일정 수정 권한이 없습니다 (본인 등록 일정이거나 과장 이상만 가능).' });
         }
 

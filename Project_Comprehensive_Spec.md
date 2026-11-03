@@ -30,7 +30,7 @@
 * **포트:** 3000
 * **역할:** 사용자의 인증 및 인가, CARTA 위험도 평가, 세션 발급/연장/폐기, 기기 라이프사이클 관리.
 * **주요 구성 모듈:**
-  * [controllers/authController.js](file:///C:/ZTNA/ztna/ztna-policy-server/controllers/authController.js): 회원가입, ZTNA 로그인 판별, 이메일 OTP 검증, 생체인증 검증, 세션 연장(Heartbeat), 로그아웃(토큰 블랙리스트 등재), 관리자 로그인.
+  * [controllers/authController.js](file:///C:/ZTNA/ztna/ztna-policy-server/controllers/authController.js): ZTNA 로그인 판별(공개 회원가입 API는 제거됨, 계정은 관리자 API로만 생성), 이메일 OTP 검증, 생체인증 검증, 세션 연장(Heartbeat), 로그아웃(토큰 블랙리스트 등재), 관리자 로그인.
   * [services/riskEngine.js](file:///C:/ZTNA/ztna/ztna-policy-server/services/riskEngine.js): 단말기 무결성, Haversine 공식 기반 물리적 이동 속도, 신규 IP, 심야 시간대 등 동적 점수(0~100점) 산출.
   * [routes/admin.js](file:///C:/ZTNA/ztna/ztna-policy-server/routes/admin.js): 관리자 전용 대시보드 통계, 24시간 위험도 트렌드, 단말기 승인/차단/삭제, 임직원 관리 API.
   * [utils/ip.js](file:///C:/ZTNA/ztna/ztna-policy-server/utils/ip.js): 프록시 헤더 및 IPv6 정제 공통 모듈.
@@ -55,7 +55,7 @@
   * [screens/LoginScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/LoginScreen.tsx) & [OtpScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/OtpScreen.tsx): 단말기 컨텍스트(UUID, GPS, 무결성) 수집 및 2차 인증 인터페이스.
   * [screens/BlockedScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/BlockedScreen.tsx): 보안 정책 위반 시 붉은 방패 화면과 함께 명확한 차단 사유 표출.
   * [screens/IntranetScreen.tsx](file:///C:/ZTNA/ztna/ztna-client/screens/IntranetScreen.tsx):
-    * 10초 주기 Heartbeat 백그라운드 폴링.
+    * 30초 주기 Heartbeat 백그라운드 폴링 (`hooks/useHeartbeat.ts`).
     * 하단 탭 내비게이션: 근태 관리(`AttendanceTab`), 기밀문서 및 공지사항(`DocumentsTab`), 일정(`ScheduleTab`), 설정(`SettingsTab`).
     * [components/tabs/documents/DocumentSection.tsx](file:///C:/ZTNA/ztna/ztna-client/components/tabs/documents/DocumentSection.tsx): 기밀 PDF 카드 슬라이더, 업로드 모달, BYOD 감지 시 다운로드 버튼 비활성화.
     * [components/tabs/documents/NoticeSection.tsx](file:///C:/ZTNA/ztna/ztna-client/components/tabs/documents/NoticeSection.tsx): 부서/직급별 보안 공지사항 열람/작성/수정 모달.
@@ -81,10 +81,11 @@
 
 ### 3.2 주요 데이터베이스 스키마
 * **`users`**: `id`, `email`, `password_hash`, `name`, `department`, `position`, `position_level` (1~6), `role` (USER/FINANCE/ADMIN), `otp_code`, `otp_expiry`, `otp_attempts`, `is_active`.
-* **`devices`**: `id`, `user_id`, `device_identifier`, `device_type` (BYOD/CORPORATE), `status` (PENDING/APPROVED/BLOCKED), `last_ip_address`, `last_latitude`, `last_longitude`, `last_accessed_at`.
+* **`devices`**: `id`, `user_id`, `device_identifier`, `device_type` (BYOD/CORPORATE), `status` (PENDING/APPROVED/BLOCKED), `is_trusted`, `is_compliant`, `bio_token_hash` (생체 인증용 기기 비밀키의 bcrypt 해시), `last_ip_address`, `last_latitude`, `last_longitude`, `last_accessed_at`.
 * **`access_logs`**: `id`, `user_id`, `device_id`, `ip_address`, `risk_score`, `action_taken` (ALLOW/STEP_UP/DENY), `reason`, `login_hour`, `created_at`.
 * **`token_blacklist`**: `id`, `jti`, `expires_at`, `created_at`.
-* **`notices`**: `id`, `title`, `content`, `author`, `date`, `is_edited`, `target_dept`, `target_position_level`.
-* **`documents`**: `id`, `title`, `description`, `original_name`, `filename`, `file_path`, `author`, `uploaded_at`.
-* **`attendance`**: `id`, `user_id`, `date`, `check_in_time`, `check_out_time`.
+* **`notices`**: `id`, `title`, `content`, `author`, `date`, `is_edited`, `target_department`, `target_position_level` (`initDb.js`의 `CREATE TABLE`에는 `target_*` 두 컬럼이 없으므로 신규 환경에서는 별도 `ALTER`가 필요).
+* **`intranet_documents`**: `id`, `title`, `description`, `original_name`, `filename`, `author`, `created_at`.
+* **`attendance_logs`**: `user_id`, `date_record`, `check_in_time`, `check_out_time`, `ip_address` (`user_id` + `date_record` 중복 키 기준 갱신).
 * **`events`**: `id`, `title`, `date`, `author`.
+* **`intranet_access_logs`**: `user_id`, `user_email`, `api_endpoint`, `method`, `ip_address` (Target Server `accessLogger`가 기록하는 사내망 API 감사 로그).

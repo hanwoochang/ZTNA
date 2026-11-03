@@ -427,8 +427,14 @@ exports.verifyContext = async (req, res) => {
         const ctx = rows[0];
 
         // 1. 이미 블랙리스트에 등재된 토큰인지 확인
-        if (ctx && ctx.blacklisted_id) {
+        if (ctx?.blacklisted_id) {
             return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
+        }
+        if (!ctx && decoded.jti) {
+            const [bl] = await pool.query('SELECT id FROM token_blacklist WHERE jti = ? LIMIT 1', [decoded.jti]);
+            if (bl.length > 0) {
+                return res.status(401).json({ action: 'TERMINATE', message: '이미 폐기된 세션입니다.' });
+            }
         }
 
         // 2. [강제 추방] 기기 미등록 또는 관리자에 의해 차단/승인 해제된 경우만 TERMINATE

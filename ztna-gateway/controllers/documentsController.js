@@ -35,19 +35,7 @@ exports.uploadDocument = async (req, res) => {
         }
     };
 
-    const allowUpload = req.headers['x-allow-download'];
-    if (allowUpload === 'false') {
-        cleanupUploadedFile();
-        return res.status(403).json({ message: 'BYOD 기기에서는 기밀 문서를 업로드할 수 없습니다.' });
-    }
-
-    const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
-    const userPos = parseInt(req.headers['x-user-position-level'] || '1', 10);
-    if (!isAdminRole && userPos < 3) {
-        cleanupUploadedFile();
-        return res.status(403).json({ message: '기밀 문서 업로드 권한이 없습니다 (과장 이상만 가능).' });
-    }
-
+    // 라우터 앞단(checkUploadPermission)에서 BYOD 및 직급(과장 이상) 권한을 사전 검증함
     const { title, description } = req.body;
     const author = req.headers['x-user-email']?.split('@')[0] || '익명';
     

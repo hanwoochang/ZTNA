@@ -205,12 +205,7 @@ export const useIntranet = (onForceLogout?: (isRevoked?: boolean) => void, syncA
     const [notices, setNotices] = useState<any[]>([]);
     
     useEffect(() => {
-        Storage.getItemAsync('user_position_level').then(val => {
-            if (val) setUserPositionLevel(parseInt(val));
-        });
-        Storage.getItemAsync('user_role').then(val => {
-            if (val) setUserRole(val);
-        });
+        syncStoredPermissions();
     }, []);
     const [noticePage, setNoticePage] = useState(1);
     const [noticeTotalPages, setNoticeTotalPages] = useState(1);

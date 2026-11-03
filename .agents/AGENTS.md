@@ -20,7 +20,7 @@
 4. **Target Server (사내망):** 기밀문서 열람, 모바일 사원증 체크인 등 실제 비즈니스 API 구동.
 
 ## 4. Core Business Logic
-- **Heartbeat & Revoke:** 1분 주기의 Heartbeat 통신으로 세션을 유지하며, 관리자 대시보드에서 강제 차단(Revoke) 시 즉각적인 앱 강제 로그아웃 수행.
+- **Heartbeat & Revoke:** 30초 주기의 Heartbeat 통신으로 세션을 유지하며, 관리자 대시보드에서 강제 차단(Revoke) 시 즉각적인 앱 강제 로그아웃 수행.
 - **Client Security:** `expo-screen-capture`를 통한 사내망 진입 시 화면 캡처 원천 차단 및 `expo-local-authentication` 기반 2차 생체 인증.
 - **Context Analysis:** GPS 위도/경도 기반 물리적 이동 속도 계산 및 비정상 접근 감지 로직.
 

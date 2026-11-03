@@ -45,7 +45,7 @@
 2. **Policy Server (`ztna-policy-server` / PDP & Control Plane, Port 3000):**
    * MVC 패턴(`authController.js`) 기반의 인증, 세션, 기기 생명주기 제어.
    * CARTA 알고리즘 기반 실시간 위험도(0~100점) 산출 및 정책(ALLOW / STEP_UP / DENY) 결정.
-   * 10초 주기 맥박(Heartbeat, `/verify-context`)을 통한 기기/IP 변조 탐지 및 실시간 JWT 재발급.
+   * 30초 주기 맥박(Heartbeat, `/verify-context`)을 통한 기기 상태/계정 정지 탐지, IP 변경 감지(세션은 유지하고 IP만 갱신), 만료 5분 이하 또는 권한 변경 시 JWT 재발급.
 3. **ZTNA Gateway (`ztna-gateway` / PEP & Data Plane, Port 4000):**
    * 출입증(JWT) 검증 미들웨어, 토큰 블랙리스트 대조, 기기 신뢰 취소 즉시 세션 파기(Session Tearing).
    * DB 사용자 직급(Lv 1~6) 및 역할(USER, FINANCE, ADMIN) 실시간 동기화 헤더 주입.
@@ -64,7 +64,7 @@
   * OS 루팅/탈옥, 블랙리스트 기기 즉시 차단 (`forceDeny`).
   * 신규 등록 기기, 미등록 IP 대역, 심야 비정상 활동(새벽 2~5시) 복합 평가 (0점 ~ 100점 누적).
 * **지속적 검증 (Continuous Verification) & 세션 강제 종료 (Session Tearing):**
-  * 세션 유지 중에도 10초 주기로 기기 상태와 네트워크 변경을 지속 모니터링.
+  * 세션 유지 중에도 30초 주기로 기기 상태와 네트워크 변경을 지속 모니터링.
   * 관리자가 대시보드에서 기기 신뢰를 해제(Revoke)하면, 이미 발급된 JWT 토큰이 있더라도 게이트웨이 및 Heartbeat에서 즉시 감지하여 실시간 강제 추방.
 * **단말기 소유권 기반 권한 제어 (BYOD vs CORPORATE):**
   * 개인 기기(BYOD)로 접속 시 인트라넷 조회는 허용하되, 파일 다운로드를 백엔드 및 클라이언트 단에서 원천 차단.

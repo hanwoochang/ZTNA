@@ -48,6 +48,7 @@ Thumbs.db
 *.sln
 *.sw?
 
-# Temporary / Scratch
+# Temporary / Scratch / Presentation
 scratch/
 *.tmp
+presentation/

@@ -51,20 +51,26 @@ const verifyToken = async (req, res, next) => {
         const [rows] = await pool.query(
             `SELECT u.id AS user_id, u.role, u.department, u.position_level, u.is_active,
                     d.status AS device_status, d.device_type,
-                    tb.id AS blacklisted_id
+                    (SELECT id FROM token_blacklist WHERE jti = ? LIMIT 1) AS blacklisted_id
              FROM users u
              LEFT JOIN devices d ON d.user_id = u.id AND d.device_identifier = ?
-             LEFT JOIN token_blacklist tb ON tb.jti = ?
              WHERE u.id = ?`,
-            [decoded.deviceId || null, decoded.jti || null, decoded.userId]
+            [decoded.jti || null, decoded.deviceId || null, decoded.userId]
         );
         const tDbEnd = process.hrtime.bigint();
         const ctx = rows[0];
 
-        // 1. 블랙리스트 확인 (로그아웃된 토큰인지 체크)
-        if (ctx && ctx.blacklisted_id) {
+        // 1. 블랙리스트 확인 (로그아웃된 토큰인지 체크 — 삭제된 계정의 폐기 토큰도 즉시 감지)
+        if (ctx?.blacklisted_id) {
             if (!isBenchmark) console.log(`[차단] 폐기된 출입증으로 접근 시도! (${decoded.email})`);
             return res.status(401).json({ message: '접근 금지: 이미 폐기된 출입증입니다!' });
+        }
+        if (!ctx && decoded.jti) {
+            const [bl] = await pool.query('SELECT id FROM token_blacklist WHERE jti = ? LIMIT 1', [decoded.jti]);
+            if (bl.length > 0) {
+                if (!isBenchmark) console.log(`[차단] 폐기된 출입증으로 접근 시도! (${decoded.email})`);
+                return res.status(401).json({ message: '접근 금지: 이미 폐기된 출입증입니다!' });
+            }
         }
 
         // 2. ZTNA 단말기 식별자(deviceId) 필수 검증 (관리자 웹 전용 토큰 등으로 우회 진입 차단)

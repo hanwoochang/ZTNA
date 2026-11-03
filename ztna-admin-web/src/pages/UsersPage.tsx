@@ -25,7 +25,7 @@ export function UsersPage() {
       if (!document.hidden) fetchUsers();
     }, 15000); // 15초 주기 임직원 위험도 및 목록 자동 갱신
     const handleMessage = (e: MessageEvent) => {
-      if (e.data === 'RELOAD_USERS') fetchUsers();
+      if (e.origin === window.location.origin && e.data === 'RELOAD_USERS') fetchUsers();
     };
     window.addEventListener('message', handleMessage);
     return () => {

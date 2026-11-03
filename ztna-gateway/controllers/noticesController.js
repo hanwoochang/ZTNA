@@ -74,7 +74,8 @@ exports.createNotice = async (req, res) => {
 exports.updateNotice = async (req, res) => {
     const id = parseInt(req.params.id);
     const { title, content } = req.body;
-    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const userEmail = req.headers['x-user-email'] || '';
+    const currentUser = userEmail.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
     
@@ -83,8 +84,9 @@ exports.updateNotice = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
+        const isAuthor = notice.author === currentUser || (userEmail && notice.author === userEmail);
         // 과장(3) 이상은 남의 글도 수정 가능
-        if (notice.author !== currentUser && !isAdminRole && userPos < 3) {
+        if (!isAuthor && !isAdminRole && userPos < 3) {
             return res.status(403).json({ message: '수정 권한이 없습니다 (본인 글이거나 과장 이상만 가능).' });
         }
 
@@ -101,7 +103,8 @@ exports.updateNotice = async (req, res) => {
 
 exports.deleteNotice = async (req, res) => {
     const id = parseInt(req.params.id);
-    const currentUser = req.headers['x-user-email']?.split('@')[0] || '익명';
+    const userEmail = req.headers['x-user-email'] || '';
+    const currentUser = userEmail.split('@')[0] || '익명';
     const isAdminRole = req.headers['x-user-role'] === 'ADMIN';
 
     const userPos = parseInt(req.headers['x-user-position-level'] || '1');
@@ -114,8 +117,9 @@ exports.deleteNotice = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
         const notice = rows[0];
 
+        const isAuthor = notice.author === currentUser || (userEmail && notice.author === userEmail);
         // 과장(3) 이상은 남의 글도 삭제 가능
-        if (notice.author !== currentUser && !isAdminRole && userPos < 3) {
+        if (!isAuthor && !isAdminRole && userPos < 3) {
             return res.status(403).json({ message: '삭제 권한이 없습니다 (본인 글이거나 과장 이상만 가능).' });
         }
 

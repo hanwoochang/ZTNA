@@ -164,7 +164,9 @@ router.delete('/users/:id', async (req, res) => {
     }
     try {
         const userId = req.params.id;
-        // 외래키(FK) 참조 무결성을 위해 관련된 기기 및 로그를 먼저 삭제합니다.
+        // 외래키(FK) 참조 무결성을 위해 관련된 사내망/근태/인증 로그 및 기기를 먼저 삭제합니다.
+        await pool.query('DELETE FROM intranet_access_logs WHERE user_id = ?', [userId]).catch(() => {});
+        await pool.query('DELETE FROM attendance_logs WHERE user_id = ?', [userId]).catch(() => {});
         await pool.query('DELETE FROM access_logs WHERE user_id = ?', [userId]);
         await pool.query('DELETE FROM devices WHERE user_id = ?', [userId]);
         const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
