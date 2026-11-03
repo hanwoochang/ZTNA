@@ -1,6 +1,6 @@
 //조립
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Keyboard, AppState } from 'react-native';
 import * as Network from 'expo-network';
 import * as Storage from '../utils/storage';
@@ -33,46 +33,61 @@ export default function HomeScreen() {
 
     useHeartbeat(isLoggedIn, deviceId, handleLogout);
 
-    // IP 주소 및 GPS 위치를 최신 상태로 새로 수집하는 함수 (포그라운드 복귀 및 로그인 직전 호출)
+    const refreshInFlightRef = useRef<Promise<{ freshIp: string; freshLocation: { latitude: number; longitude: number } | null }> | null>(null);
+    const prevIsLoggedInRef = useRef(isLoggedIn);
+
+    // IP 주소 및 GPS 위치를 최신 상태로 새로 수집하는 함수 (포그라운드 복귀 및 로그인 직전 호출, 중복 호출 병합)
     const refreshNetworkAndLocation = useCallback(async () => {
-        const currentLocationPromise = getLocation();
-        const ipPromise = (async () => {
-            try {
-                let ip = '';
+        if (refreshInFlightRef.current) {
+            return refreshInFlightRef.current;
+        }
+        const task = (async () => {
+            const currentLocationPromise = getLocation();
+            const ipPromise = (async () => {
                 try {
-                    const res = await fetch(`${POLICY_SERVER_URL}/api/my-ip`, { cache: 'no-store' });
-                    const data = await res.json();
-                    if (data?.ip && data.ip !== '0.0.0.0') ip = data.ip;
-                } catch {
-                    // 정책 서버 조회 실패 시 외부 IP 조회 폴백
-                }
-                if (!ip || ip === '0.0.0.0') {
+                    let ip = '';
                     try {
-                        const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+                        const res = await fetch(`${POLICY_SERVER_URL}/api/my-ip`, { cache: 'no-store' });
                         const data = await res.json();
-                        if (data?.ip) ip = data.ip;
+                        if (data?.ip && data.ip !== '0.0.0.0') ip = data.ip;
                     } catch {
-                        // 공인 IP 조회 실패 시 로컬 인터페이스 조회로 폴백
+                        // 정책 서버 조회 실패 시 외부 IP 조회 폴백
                     }
-                }
-                if (!ip || ip === '0.0.0.0') {
-                    const localIp = await Network.getIpAddressAsync();
-                    if (localIp && localIp !== '0.0.0.0') {
-                        ip = localIp;
+                    if (!ip || ip === '0.0.0.0') {
+                        try {
+                            const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+                            const data = await res.json();
+                            if (data?.ip) ip = data.ip;
+                        } catch {
+                            // 공인 IP 조회 실패 시 로컬 인터페이스 조회로 폴백
+                        }
                     }
+                    if (!ip || ip === '0.0.0.0') {
+                        const localIp = await Network.getIpAddressAsync();
+                        if (localIp && localIp !== '0.0.0.0') {
+                            ip = localIp;
+                        }
+                    }
+                    return ip || 'IP 추적 불가';
+                } catch {
+                    return 'IP 추적 불가';
                 }
-                return ip || 'IP 추적 불가';
-            } catch {
-                return 'IP 추적 불가';
+            })();
+
+            const [freshIp, freshLocation] = await Promise.all([ipPromise, currentLocationPromise]);
+            setIpAddress(freshIp);
+            if (freshLocation) {
+                setLocation(freshLocation);
             }
+            return { freshIp, freshLocation };
         })();
 
-        const [freshIp, freshLocation] = await Promise.all([ipPromise, currentLocationPromise]);
-        setIpAddress(freshIp);
-        if (freshLocation) {
-            setLocation(freshLocation);
+        refreshInFlightRef.current = task;
+        try {
+            return await task;
+        } finally {
+            refreshInFlightRef.current = null;
         }
-        return { freshIp, freshLocation };
     }, []);
 
     useEffect(() => {
@@ -99,7 +114,7 @@ export default function HomeScreen() {
         collectContext();
     }, [refreshNetworkAndLocation]);
 
-    // 앱이 백그라운드에서 다시 켜질 때(active) 또는 로그아웃 상태로 돌아올 때마다 최신 IP/GPS 자동 갱신
+    // 앱이 백그라운드에서 다시 켜질 때(active) 최신 IP/GPS 자동 갱신
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
@@ -109,10 +124,12 @@ export default function HomeScreen() {
         return () => subscription.remove();
     }, [refreshNetworkAndLocation]);
 
+    // 로그인 상태에서 로그아웃 상태로 전환될 때만 최신 IP/GPS 자동 갱신
     useEffect(() => {
-        if (!isLoggedIn && deviceId !== '수집 중...') {
+        if (prevIsLoggedInRef.current && !isLoggedIn && deviceId !== '수집 중...') {
             refreshNetworkAndLocation();
         }
+        prevIsLoggedInRef.current = isLoggedIn;
     }, [isLoggedIn, deviceId, refreshNetworkAndLocation]);
 
     if (!isDeviceSafe || isBlockedByGateway) return <BlockedScreen handleLogout={() => setIsBlockedByGateway(false)} />;

@@ -53,10 +53,17 @@
         {
           "faceIDPermission": "기밀 보안망(ZTNA) 접속을 위해 Face ID 권한이 필요합니다."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "experiments": {
-      "baseUrl": "/app",
       "typedRoutes": true
     },
     "extra": {

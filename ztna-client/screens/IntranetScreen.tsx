@@ -58,10 +58,10 @@ export const IntranetScreen = (props: Props) => {
         }, 5000);
 
         if (Platform.OS !== 'web') {
-            ScreenCapture.preventScreenCaptureAsync();
+            ScreenCapture.preventScreenCaptureAsync().catch(() => {});
             return () => {
                 clearInterval(syncInterval);
-                ScreenCapture.allowScreenCaptureAsync();
+                ScreenCapture.allowScreenCaptureAsync().catch(() => {});
             };
         }
 
