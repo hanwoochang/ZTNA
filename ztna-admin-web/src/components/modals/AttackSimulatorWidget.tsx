@@ -21,7 +21,7 @@ export function AttackSimulatorWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [targetDeviceId, setTargetDeviceId] = useState<string>(WEB_DEVICE_ID);
+  const [targetDeviceId, setTargetDeviceId] = useState<string>(PHONE_DEVICE_ID);
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: 1,
@@ -270,28 +270,13 @@ export function AttackSimulatorWidget() {
     );
   };
 
-  // Stage 3: 불가능한 이동 (서울 -> 뉴욕)
+  // Stage 3: 불가능한 이동 (스마트폰 실제 접속 직후 뉴욕 좌표 침입 시도)
   const executeStage3 = async () => {
     addLog(
       'HEADER',
       'Stage 3: 해외 좌표 기반 불가능한 이동(Impossible Travel) 탐지 및 단말 자동 격리',
-      `대상 기기(${targetDeviceId}): 서울 본사 접속 직후 2초 만에 미국 뉴욕 좌표(11,040km)에서 접속을 시도합니다.`
+      `대상 기기(${targetDeviceId}): 방금 국내에서 정상 접속한 단말기 정보로 미국 뉴욕 좌표(40.7128, -74.0060)에서 침입을 시도합니다.`
     );
-
-    await restoreDevices(true);
-
-    addLog('INFO', '[Step 3-1] 서울 본사(37.5665, 126.9780) 정상 접속 기준점 생성');
-    await sendAttackRequest('POST', '/api/login', {}, {
-      email: VICTIM_EMAIL,
-      password: VICTIM_PASSWORD,
-      deviceId: targetDeviceId,
-      isRooted: false,
-      latitude: 37.5665,
-      longitude: 126.978
-    });
-
-    addLog('INFO', '[대기] 2초 후 미국 뉴욕(40.7128, -74.0060)에서 동일 계정/단말로 해커 침입 시도...');
-    await sleep(2000);
 
     await sendAttackRequest('POST', '/api/login', {}, {
       email: VICTIM_EMAIL,
