@@ -28,7 +28,7 @@ export function AttackSimulatorWidget() {
       time: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
       type: 'INFO',
       title: 'ZTNA 해커 침입 방어 라이브 시뮬레이터 준비 완료',
-      detail: `Target: ${DISPLAY_HOST} | 상단 버튼 클릭 또는 숫자 키(1~5, r)로 실시간 공격을 시연할 수 있습니다.`
+      detail: `Target: ${DISPLAY_HOST} | 상단 버튼 클릭으로 실시간 공격 및 차단 방어를 시연할 수 있습니다.`
     }
   ]);
 
@@ -367,24 +367,24 @@ export function AttackSimulatorWidget() {
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
-          bottom: '28px',
-          right: '28px',
+          bottom: '32px',
+          right: '32px',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          padding: '14px 22px',
+          gap: '14px',
+          padding: '18px 28px',
           backgroundColor: '#0f172a',
           color: '#38bdf8',
-          border: '1px solid #334155',
-          borderRadius: '12px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
+          border: '2px solid #334155',
+          borderRadius: '14px',
+          boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
           cursor: 'pointer',
-          fontWeight: 700,
-          fontSize: '16px'
+          fontWeight: 800,
+          fontSize: '22px'
         }}
       >
-        <Terminal size={20} />
+        <Terminal size={28} />
         <span>해커 침입 시뮬레이터</span>
       </button>
     );
@@ -396,14 +396,16 @@ export function AttackSimulatorWidget() {
         position: 'fixed',
         bottom: '24px',
         right: '24px',
-        width: isExpanded ? 'calc(100vw - 360px)' : '760px',
-        height: isExpanded ? 'calc(100vh - 64px)' : '560px',
+        width: isExpanded ? 'calc(100vw - 360px)' : '1160px',
+        height: isExpanded ? 'calc(100vh - 64px)' : '780px',
+        maxWidth: 'calc(100vw - 48px)',
+        maxHeight: 'calc(100vh - 48px)',
         zIndex: 9999,
         backgroundColor: '#090d16',
         color: '#e2e8f0',
-        border: '1px solid #334155',
-        borderRadius: '14px',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+        border: '2px solid #334155',
+        borderRadius: '16px',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.7)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -416,60 +418,60 @@ export function AttackSimulatorWidget() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 18px',
+          padding: '16px 24px',
           backgroundColor: '#1e293b',
           borderBottom: '1px solid #334155'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ShieldAlert size={20} color="#f87171" />
-          <span style={{ fontWeight: 700, fontSize: '15px', color: '#f8fafc' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <ShieldAlert size={28} color="#f87171" />
+          <span style={{ fontWeight: 800, fontSize: '24px', color: '#f8fafc' }}>
             ZTNA Live Attacker Console ({DISPLAY_HOST})
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={clearLogs}
             title="로그 지우기"
             style={{
-              padding: '5px 8px',
+              padding: '8px 12px',
               backgroundColor: '#334155',
               color: '#cbd5e1',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
-            <Trash2 size={15} />
+            <Trash2 size={22} />
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             title="크기 전환"
             style={{
-              padding: '5px 8px',
+              padding: '8px 12px',
               backgroundColor: '#334155',
               color: '#cbd5e1',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
-            {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isExpanded ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
           </button>
           <button
             onClick={() => setIsOpen(false)}
             title="닫기"
             style={{
-              padding: '5px 8px',
+              padding: '8px 12px',
               backgroundColor: '#dc2626',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
-            <X size={15} />
+            <X size={22} />
           </button>
         </div>
       </div>
@@ -477,27 +479,30 @@ export function AttackSimulatorWidget() {
       {/* Control Panel */}
       <div
         style={{
-          padding: '12px 16px',
+          padding: '18px 24px',
           backgroundColor: '#0f172a',
           borderBottom: '1px solid #1e293b',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px'
+          gap: '16px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
-          <span style={{ color: '#94a3b8' }}>Stage 2/3 공격 대상 단말기 선택:</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <span style={{ color: '#cbd5e1', fontSize: '20px', fontWeight: 700 }}>
+            Stage 2/3 공격 대상 단말기 선택:
+          </span>
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={() => setTargetDeviceId(WEB_DEVICE_ID)}
               style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                border: targetDeviceId === WEB_DEVICE_ID ? '1px solid #38bdf8' : '1px solid #334155',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: targetDeviceId === WEB_DEVICE_ID ? '2px solid #38bdf8' : '1px solid #334155',
                 backgroundColor: targetDeviceId === WEB_DEVICE_ID ? '#0284c7' : '#1e293b',
                 color: '#ffffff',
                 cursor: 'pointer',
-                fontSize: '12px'
+                fontSize: '18px',
+                fontWeight: 700
               }}
             >
               웹 시연 기기 (휴대폰 로그인 유지)
@@ -505,13 +510,14 @@ export function AttackSimulatorWidget() {
             <button
               onClick={() => setTargetDeviceId(PHONE_DEVICE_ID)}
               style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                border: targetDeviceId === PHONE_DEVICE_ID ? '1px solid #f87171' : '1px solid #334155',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: targetDeviceId === PHONE_DEVICE_ID ? '2px solid #f87171' : '1px solid #334155',
                 backgroundColor: targetDeviceId === PHONE_DEVICE_ID ? '#b91c1c' : '#1e293b',
                 color: '#ffffff',
                 cursor: 'pointer',
-                fontSize: '12px'
+                fontSize: '18px',
+                fontWeight: 700
               }}
             >
               스마트폰 기기 (Stage 3 시 휴대폰 동시 차단)
@@ -519,7 +525,7 @@ export function AttackSimulatorWidget() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           <button
             disabled={isRunning}
             onClick={() => handleRun(executeStage1)}
@@ -527,18 +533,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#1e293b',
               color: '#38bdf8',
-              border: '1px solid #0284c7',
-              borderRadius: '6px',
+              border: '2px solid #0284c7',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <Play size={13} />
+            <Play size={20} />
             <span>[1] Dark Cloud & 토큰 우회</span>
           </button>
 
@@ -549,18 +555,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#1e293b',
               color: '#38bdf8',
-              border: '1px solid #0284c7',
-              borderRadius: '6px',
+              border: '2px solid #0284c7',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <Play size={13} />
+            <Play size={20} />
             <span>[2] 루팅폰 & 생체키 위조</span>
           </button>
 
@@ -571,18 +577,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#1e293b',
               color: '#f87171',
-              border: '1px solid #dc2626',
-              borderRadius: '6px',
+              border: '2px solid #dc2626',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <Play size={13} />
+            <Play size={20} />
             <span>[3] 서울-&gt;뉴욕 불가능 이동</span>
           </button>
 
@@ -593,18 +599,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#1e293b',
               color: '#fbbf24',
-              border: '1px solid #d97706',
-              borderRadius: '6px',
+              border: '2px solid #d97706',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <Play size={13} />
+            <Play size={20} />
             <span>[4] OTP 무차별 대입 폭파</span>
           </button>
 
@@ -625,18 +631,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#312e81',
               color: '#e0e7ff',
-              border: '1px solid #6366f1',
-              borderRadius: '6px',
+              border: '2px solid #6366f1',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <Play size={13} />
+            <Play size={20} />
             <span>[5] Stage 1~4 연속 실행</span>
           </button>
 
@@ -647,18 +653,18 @@ export function AttackSimulatorWidget() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 10px',
+              gap: '10px',
+              padding: '14px 16px',
               backgroundColor: '#064e3b',
               color: '#34d399',
-              border: '1px solid #059669',
-              borderRadius: '6px',
+              border: '2px solid #059669',
+              borderRadius: '10px',
               cursor: isRunning ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 700
+              fontSize: '19px',
+              fontWeight: 800
             }}
           >
-            <RotateCcw size={13} />
+            <RotateCcw size={20} />
             <span>[r] 차단 단말기 원상복구</span>
           </button>
         </div>
@@ -669,13 +675,13 @@ export function AttackSimulatorWidget() {
         ref={logContainerRef}
         style={{
           flex: 1,
-          padding: '14px 16px',
+          padding: '20px 24px',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
-          fontSize: '13px',
-          lineHeight: 1.5
+          gap: '16px',
+          fontSize: '21px',
+          lineHeight: 1.6
         }}
       >
         {logs.map((entry) => {
@@ -710,25 +716,26 @@ export function AttackSimulatorWidget() {
             <div
               key={entry.id}
               style={{
-                borderLeft: `3px solid ${borderColor}`,
+                borderLeft: `5px solid ${borderColor}`,
                 backgroundColor: bgColor,
-                padding: '8px 12px',
-                borderRadius: '0 6px 6px 0'
+                padding: '14px 18px',
+                borderRadius: '0 8px 8px 0'
               }}
             >
-              <div style={{ fontWeight: 700, color: titleColor }}>
-                <span style={{ color: '#64748b', marginRight: '8px' }}>[{entry.time}]</span>
+              <div style={{ fontWeight: 800, color: titleColor, fontSize: '22px' }}>
+                <span style={{ color: '#64748b', marginRight: '10px' }}>[{entry.time}]</span>
                 {entry.title}
               </div>
               {entry.detail && (
                 <pre
                   style={{
-                    margin: '4px 0 0 0',
+                    margin: '8px 0 0 0',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
-                    color: '#cbd5e1',
+                    color: '#e2e8f0',
                     fontFamily: 'inherit',
-                    fontSize: '12px'
+                    fontSize: '19px',
+                    lineHeight: 1.55
                   }}
                 >
                   {entry.detail}
