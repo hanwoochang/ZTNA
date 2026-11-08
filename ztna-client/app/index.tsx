@@ -42,7 +42,12 @@ export default function HomeScreen() {
             return refreshInFlightRef.current;
         }
         const task = (async () => {
-            const currentLocationPromise = getLocation();
+            const currentLocationPromise = getLocation().then((freshLocation) => {
+                if (freshLocation) {
+                    setLocation(freshLocation);
+                }
+                return freshLocation;
+            });
             const ipPromise = (async () => {
                 try {
                     let ip = '';
@@ -68,17 +73,16 @@ export default function HomeScreen() {
                             ip = localIp;
                         }
                     }
-                    return ip || 'IP 추적 불가';
+                    const resolvedIp = ip || 'IP 추적 불가';
+                    setIpAddress(resolvedIp);
+                    return resolvedIp;
                 } catch {
+                    setIpAddress('IP 추적 불가');
                     return 'IP 추적 불가';
                 }
             })();
 
             const [freshIp, freshLocation] = await Promise.all([ipPromise, currentLocationPromise]);
-            setIpAddress(freshIp);
-            if (freshLocation) {
-                setLocation(freshLocation);
-            }
             return { freshIp, freshLocation };
         })();
 
@@ -171,8 +175,13 @@ export default function HomeScreen() {
                     Alert.alert('보안 컨텍스트 수집 중', '네트워크 및 기기 보안 정보를 수집하는 중입니다. 잠시만 기다려주세요.', [{ text: '확인' }]);
                     return;
                 }
-                const { freshLocation } = await refreshNetworkAndLocation();
-                handleLogin(email, password, deviceId, freshLocation || location); 
+                if (location) {
+                    refreshNetworkAndLocation();
+                    handleLogin(email, password, deviceId, location);
+                } else {
+                    const { freshLocation } = await refreshNetworkAndLocation();
+                    handleLogin(email, password, deviceId, freshLocation || location);
+                }
             }}
         />
     );
