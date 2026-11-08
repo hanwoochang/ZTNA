@@ -21,7 +21,7 @@ export function AttackSimulatorWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [targetDeviceId, setTargetDeviceId] = useState<string>(PHONE_DEVICE_ID);
+  const targetDeviceId = PHONE_DEVICE_ID;
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: 1,
@@ -472,44 +472,6 @@ export function AttackSimulatorWidget() {
           gap: '16px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ color: '#cbd5e1', fontSize: '20px', fontWeight: 700 }}>
-            Stage 2/3 공격 대상 단말기 선택:
-          </span>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => setTargetDeviceId(WEB_DEVICE_ID)}
-              style={{
-                padding: '10px 18px',
-                borderRadius: '8px',
-                border: targetDeviceId === WEB_DEVICE_ID ? '2px solid #38bdf8' : '1px solid #334155',
-                backgroundColor: targetDeviceId === WEB_DEVICE_ID ? '#0284c7' : '#1e293b',
-                color: '#ffffff',
-                cursor: 'pointer',
-                fontSize: '18px',
-                fontWeight: 700
-              }}
-            >
-              웹 시연 기기 (휴대폰 로그인 유지)
-            </button>
-            <button
-              onClick={() => setTargetDeviceId(PHONE_DEVICE_ID)}
-              style={{
-                padding: '10px 18px',
-                borderRadius: '8px',
-                border: targetDeviceId === PHONE_DEVICE_ID ? '2px solid #f87171' : '1px solid #334155',
-                backgroundColor: targetDeviceId === PHONE_DEVICE_ID ? '#b91c1c' : '#1e293b',
-                color: '#ffffff',
-                cursor: 'pointer',
-                fontSize: '18px',
-                fontWeight: 700
-              }}
-            >
-              스마트폰 기기 (Stage 3 시 휴대폰 동시 차단)
-            </button>
-          </div>
-        </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           <button
             disabled={isRunning}
@@ -574,7 +536,7 @@ export function AttackSimulatorWidget() {
             }}
           >
             <Play size={20} />
-            <span>[3] 서울-&gt;뉴욕 불가능 이동</span>
+            <span>[3] 뉴욕으로 불가능 이동</span>
           </button>
 
           <button
