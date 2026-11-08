@@ -4,6 +4,7 @@ import { Shield, Activity, Users, Server, LogOut, ClipboardList } from 'lucide-r
 import { useHighRiskNotification } from '../../hooks/useHighRiskNotification';
 import { NotificationBell } from './NotificationBell';
 import { ToastAlert } from './ToastAlert';
+import { AttackSimulatorWidget } from '../modals/AttackSimulatorWidget';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '대시보드',
@@ -25,6 +26,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       
       {/* 실시간 고위험 접속 토스트 알림 팝업 */}
       <ToastAlert alert={toastAlert} onClose={closeToast} />
+
+      {/* 해커 침입 방어 라이브 시뮬레이터 위젯 (제거 시 아래 1줄만 삭제) */}
+      <AttackSimulatorWidget />
 
       {/* Sidebar */}
       <aside className="bg-card rounded-xl border border-hairline flex flex-col text-ink shadow-sm z-10 shrink-0" style={{ width: '300px', height: '100%', overflow: 'hidden' }}>
