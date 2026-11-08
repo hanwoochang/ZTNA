@@ -12,7 +12,7 @@
 스마트폰의 모바일 브라우저(Chrome, 삼성 인터넷 등)에서 아래 링크 중 하나를 선택하여 다운로드합니다:
 
 *   **Expo 공식 최신 빌드 페이지 (PC 화면에서 QR 스캔 및 최신 APK 다운로드 가능):**  
-    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/cdbd5cc8-2edb-4746-b4e9-7ae3e88fbd3c](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/cdbd5cc8-2edb-4746-b4e9-7ae3e88fbd3c)
+    [https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/55a4a8fb-c097-40b7-a663-7b674e0272b3](https://expo.dev/accounts/hanwoochang/projects/ztna-client/builds/55a4a8fb-c097-40b7-a663-7b674e0272b3)
 *   **최신 APK 직접 다운로드 URL:**  
     [https://expo.dev/artifacts/eas/wv50VtN3zU6nRUQNUdqlMSEQ9hVr8vTGP5S2ySYN34I.apk](https://expo.dev/artifacts/eas/wv50VtN3zU6nRUQNUdqlMSEQ9hVr8vTGP5S2ySYN34I.apk)
 
